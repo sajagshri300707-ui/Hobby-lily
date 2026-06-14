@@ -7,13 +7,10 @@ import api from '../../lib/api';
 import BloomProgress from '../../components/BloomProgress';
 import { getStreak, streakMessage, streakFlame } from '../../lib/streakUtils';
 import i18n from '../../lib/i18n';
+import { playHobbyPlantedSound, playSkipSound } from '../../lib/sounds';
 
-const CLIENT_MOCK_HOBBIES = [
-  { id: 1, name: 'Guitar', emoji: '🎸', bloom_stage: 'sprout', progress: 23, days_active: 34, difficulty: 'beginner', estimated_time_per_day: '30 mins/day' },
-  { id: 2, name: 'Watercolor Painting', emoji: '🎨', bloom_stage: 'bud', progress: 61, days_active: 28, difficulty: 'intermediate', estimated_time_per_day: '45 mins/day' },
-  { id: 3, name: 'Photography', emoji: '📷', bloom_stage: 'seed', progress: 8, days_active: 12, difficulty: 'beginner', estimated_time_per_day: '20 mins/day' },
-];
-const CLIENT_MOCK_STATS = { totalHobbies: 3, daysActive: 34, tasksCompleted: 12, bloomStage: 'bud' };
+const CLIENT_MOCK_HOBBIES = [];
+const CLIENT_MOCK_STATS = { totalHobbies: 0, daysActive: 0, tasksCompleted: 0, bloomStage: 'seed' };
 
 const BLOOM_STAGES = {
   seed:       { emoji: '🌰', label: 'Seed',       className: 'flower-seed',      badge: 'stage-seed' },
@@ -92,12 +89,34 @@ function AddHobbyModal({ onClose, onAdd, navigate }) {
   // step: 'choose' | 'direct' | 'describe'
   const [step, setStep] = useState('choose');
   const [directInput, setDirectInput] = useState('');
+  const [priorContext, setPriorContext] = useState('');
   const [describeInput, setDescribeInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [suggestion, setSuggestion] = useState(null);
   const [alternatives, setAlternatives] = useState([]);
   const [planting, setPlanting] = useState(false);
   const [error, setError] = useState('');
+
+  // Collect inherited skills from all completed hobbies in localStorage
+  const getInheritedSkills = () => {
+    const skills = {};
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('skills_'));
+      keys.forEach(k => {
+        const hobbyName = k.replace('skills_', '');
+        const raw = localStorage.getItem(k);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        // Support both old format (array) and new format (object with profile)
+        if (Array.isArray(data)) {
+          skills[hobbyName] = { skills: data, profile: data.join(', ') };
+        } else if (data?.skills?.length > 0 || data?.profile) {
+          skills[hobbyName] = data;
+        }
+      });
+    } catch {}
+    return skills;
+  };
 
   const langCultureMap = {
     hi: 'Indian culture, Bollywood music, classical Indian arts',
@@ -124,28 +143,56 @@ function AddHobbyModal({ onClose, onAdd, navigate }) {
         difficulty: 'beginner',
         estimated_time_per_day: '30 mins/day',
       });
-      // Generate chapter 1 immediately
+
+      const inherited = getInheritedSkills();
+      const hasContext = priorContext.trim() || Object.keys(inherited).length > 0;
+
+      // Assess what chapter to start at
+      let startChapter = 1;
+      let skipData = null;
+      if (hasContext) {
+        try {
+          const assessRes = await api.post('/ai/assess-start-chapter', {
+            hobbyName: directInput.trim(),
+            inheritedSkills: inherited,
+            priorContext: priorContext.trim(),
+          });
+          startChapter = assessRes.data.startChapter || 1;
+          if (assessRes.data.skippedChapters > 0) skipData = assessRes.data;
+        } catch {}
+      }
+
+      // Generate the starting chapter
       const chRes = await api.post('/ai/generate-chapter', {
         hobbyName: directInput.trim(),
-        chapterNumber: 1,
+        chapterNumber: startChapter,
         completedChapters: [],
         language: lang,
         culturalContext,
+        priorContext: priorContext.trim(),
+        inheritedSkills: inherited,
       });
       if (chRes.data?.tasks) {
         chRes.data.tasks = chRes.data.tasks.map((t, j) => ({
           ...t, id: Date.now() + j, taskNumber: j + 1,
           status: j === 0 ? 'current' : 'upcoming',
         }));
-        localStorage.setItem(`path_${directInput.trim()}`, JSON.stringify({
-          hobbyName: directInput.trim(), chapters: [chRes.data],
-        }));
+        const pathObj = {
+          hobbyName: directInput.trim(),
+          chapters: [chRes.data],
+          skipData,
+          startedAtChapter: startChapter,
+        };
+        localStorage.setItem(`path_${directInput.trim()}`, JSON.stringify(pathObj));
       }
       onAdd(res.data);
       onClose();
+      playHobbyPlantedSound();
+      if (skipData) setTimeout(() => playSkipSound(), 700);
       navigate('/app/path', { state: { hobbyId: res.data.id } });
-    } catch {
-      setError('Failed to add hobby. Please try again.');
+    } catch (err) {
+      console.error("Direct Generate Error:", err);
+      setError('Failed to add hobby: ' + (err.response?.data?.error || err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -174,9 +221,27 @@ function AddHobbyModal({ onClose, onAdd, navigate }) {
         name: suggestion.hobbyName, emoji: suggestion.emoji,
         difficulty: suggestion.difficulty, estimated_time_per_day: suggestion.estimatedTimePerDay,
       });
+
+      const inherited = getInheritedSkills();
+      let startChapter = 1;
+      let skipData = null;
+      if (Object.keys(inherited).length > 0) {
+        try {
+          const assessRes = await api.post('/ai/assess-start-chapter', {
+            hobbyName: suggestion.hobbyName,
+            inheritedSkills: inherited,
+            priorContext: '',
+          });
+          startChapter = assessRes.data.startChapter || 1;
+          if (assessRes.data.skippedChapters > 0) skipData = assessRes.data;
+        } catch {}
+      }
+
       const chRes = await api.post('/ai/generate-chapter', {
-        hobbyName: suggestion.hobbyName, chapterNumber: 1,
+        hobbyName: suggestion.hobbyName, chapterNumber: startChapter,
         completedChapters: [], language: lang, culturalContext,
+        priorContext: '',
+        inheritedSkills: inherited,
       });
       if (chRes.data?.tasks) {
         chRes.data.tasks = chRes.data.tasks.map((t, j) => ({
@@ -184,14 +249,21 @@ function AddHobbyModal({ onClose, onAdd, navigate }) {
           status: j === 0 ? 'current' : 'upcoming',
         }));
         localStorage.setItem(`path_${suggestion.hobbyName}`, JSON.stringify({
-          hobbyName: suggestion.hobbyName, chapters: [chRes.data],
+          hobbyName: suggestion.hobbyName,
+          chapters: [chRes.data],
+          skipData,
+          startedAtChapter: startChapter,
         }));
       }
       onAdd(res.data);
       onClose();
+      playHobbyPlantedSound();
+      if (skipData) setTimeout(() => playSkipSound(), 700);
       navigate('/app/path', { state: { hobbyId: res.data.id } });
-    } catch { setError('Failed to add hobby. Please try again.'); }
-    finally { setPlanting(false); }
+    } catch (err) {
+      console.error("Plant Error:", err);
+      setError('Failed to add hobby: ' + (err.response?.data?.error || err.message || 'Unknown error'));
+    } finally { setPlanting(false); }
   };
 
   const QUICK_IDEAS = [
@@ -276,7 +348,6 @@ function AddHobbyModal({ onClose, onAdd, navigate }) {
             </motion.div>
           )}
 
-          {/* ── Step 2a: Direct input ── */}
           {step === 'direct' && (
             <motion.div key="direct" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <button type="button" onClick={() => setStep('choose')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)', fontFamily: 'var(--font-body)', fontSize: '0.85rem', marginBottom: '1rem', padding: 0 }}>← Back</button>
@@ -286,9 +357,50 @@ function AddHobbyModal({ onClose, onAdd, navigate }) {
                   placeholder="e.g. Guitar, Watercolor, Chess, Pottery…"
                   value={directInput}
                   onChange={e => setDirectInput(e.target.value)}
-                  style={{ marginBottom: '1rem', fontSize: '1rem' }}
+                  style={{ marginBottom: '0.75rem', fontSize: '1rem' }}
                   autoFocus
                 />
+
+                {/* Prior knowledge field */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink-soft)', fontFamily: 'var(--font-body)', marginBottom: '6px' }}>
+                    What do you already know? <span style={{ fontWeight: 400, color: 'var(--ink-muted)' }}>(optional)</span>
+                  </label>
+                  <textarea
+                    className="form-input"
+                    rows={2}
+                    placeholder='e.g. "I played guitar for 2 years, know basic chords and some music theory"'
+                    value={priorContext}
+                    onChange={e => setPriorContext(e.target.value)}
+                    style={{ resize: 'none', fontSize: '0.88rem' }}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--ink-muted)', fontFamily: 'var(--font-body)', marginTop: '4px' }}>
+                    AI will skip what you already know and start you at the right level.
+                  </p>
+                </div>
+
+                {/* Show inherited skills from other hobbies */}
+                {(() => {
+                  const inherited = getInheritedSkills();
+                  const entries = Object.entries(inherited);
+                  if (entries.length === 0) return null;
+                  return (
+                    <div style={{ background: 'var(--gold-pale)', border: '1px solid var(--gold-light)', borderRadius: '10px', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
+                      <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--gold)', fontFamily: 'var(--font-body)', marginBottom: '6px' }}>
+                        🧠 Skills you can inherit from your other hobbies:
+                      </p>
+                      {entries.map(([hobby, data]) => (
+                        <p key={hobby} style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', fontFamily: 'var(--font-body)', marginBottom: '2px' }}>
+                          <strong>{hobby}:</strong> {data.profile || (data.skills || []).join(', ')}
+                        </p>
+                      ))}
+                      <p style={{ fontSize: '0.72rem', color: 'var(--ink-muted)', fontFamily: 'var(--font-body)', marginTop: '6px' }}>
+                        These will be automatically applied — you may skip ahead!
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 {error && <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#FEE2E2', borderRadius: '10px', fontSize: '0.85rem', color: '#991B1B' }}>{error}</div>}
                 <button type="submit" className="btn btn-primary" disabled={loading || !directInput.trim()} style={{ width: '100%', justifyContent: 'center' }}>
                   {loading ? '✨ Generating your path…' : 'Generate Path →'}

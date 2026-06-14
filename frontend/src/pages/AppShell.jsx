@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useBranch } from '../context/BranchContext';
 import OnboardingOverlay from '../components/OnboardingOverlay';
 import { updateStreak, getStreak, streakMessage } from '../lib/streakUtils';
 
@@ -79,20 +80,15 @@ export default function AppShell() {
   const { user, logout } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const { activeBranch, leaveBranch, isInBranch } = useBranch();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('hl_onboarding_done'));
   const [openAddHobby, setOpenAddHobby] = useState(false);
   const [streak, setStreak] = useState(0);
-
-  useEffect(() => {
-    if (!localStorage.getItem('hl_onboarding_done')) {
-      setShowOnboarding(true);
-    }
-  }, []);
 
   useEffect(() => {
     // Update streak on mount
@@ -108,6 +104,7 @@ export default function AppShell() {
       };
       setTimeout(() => showToast(msgs[result.milestone] || `🔥 ${result.milestone}-day streak!`, 'points'), 800);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -122,7 +119,7 @@ export default function AppShell() {
     navigate('/');
   };
 
-  const SidebarContent = () => (
+  const renderSidebarContent = () => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '1rem' }}>
       <div style={{ padding: '0.5rem 0.5rem 1.5rem', borderBottom: '1px solid var(--border)', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -142,7 +139,7 @@ export default function AppShell() {
         <UserAvatar name={user?.name} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--ink)', fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name || 'Gardener'}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--ink-muted)', fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--ink-muted)', fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email || user?.phone || ''}</div>
         </div>
         <button onClick={handleLogout} title="Sign out" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', opacity: 0.6, padding: '4px' }}>↩</button>
       </div>
@@ -152,14 +149,14 @@ export default function AppShell() {
   return (
     <div className="app-shell">
       <aside className="hide-mobile app-sidebar">
-        <SidebarContent />
+        {renderSidebarContent()}
       </aside>
       <AnimatePresence>
         {sidebarOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,7,0.4)', zIndex: 200, backdropFilter: 'blur(2px)' }} />
             <motion.aside initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="app-sidebar" style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '240px', zIndex: 201 }}>
-              <SidebarContent />
+              {renderSidebarContent()}
             </motion.aside>
           </>
         )}
@@ -173,6 +170,25 @@ export default function AppShell() {
           <div style={{ flex: 1, maxWidth: '400px' }}>
             <input type="text" placeholder={t('common.searchPlaceholder')} className="form-input" style={{ padding: '8px 14px', fontSize: '0.88rem', background: 'var(--cream)' }} />
           </div>
+
+          {/* Branch indicator — shows when in branch mode */}
+          {isInBranch && activeBranch && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(91,184,245,0.15)', border: '1.5px solid var(--blue-soft)', borderRadius: '99px', padding: '5px 12px', flexShrink: 0 }}
+            >
+              <motion.span animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }}>🌿</motion.span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brown-coffee)', fontFamily: 'var(--font-body)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {activeBranch.branchName}
+              </span>
+              <button
+                onClick={leaveBranch}
+                title="Exit branch"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--ink-muted)', padding: '0 2px', lineHeight: 1 }}
+              >×</button>
+            </motion.div>
+          )}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {/* Streak badge — between search and notifications */}
             <StreakBadge count={streak} />
@@ -202,7 +218,7 @@ export default function AppShell() {
                   <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -4 }} style={{ position: 'absolute', top: '44px', right: 0, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow-hover)', padding: '0.5rem', minWidth: '180px', zIndex: 50 }}>
                     <div style={{ padding: '0.5rem 0.75rem' }}>
                       <motion.div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--ink)' }}>{user?.name}</motion.div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{user?.email}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{user?.email || user?.phone || ''}</div>
                     </div>
                     <div style={{ height: '1px', background: 'var(--border)', margin: '0.25rem 0' }} />
                     <button onClick={handleLogout} style={{ width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: '0.88rem', borderRadius: '8px' }}>{t('common.signOut')} ↩</button>
