@@ -242,18 +242,20 @@ function SimpleStageSVG({ percent }) {
       <line x1="60" y1="100" x2="60" y2="65" stroke="#388E3C" strokeWidth="3.5" strokeLinecap="round" />
       <path d="M60 90 Q44 82 40 70 Q53 76 60 87" fill="#4CAF50" />
       <path d="M60 84 Q76 76 80 64 Q67 70 60 81" fill="#66BB6A" />
-      {petals.map((angle, i) => (
-        <motion.ellipse key={angle}
-          cx={60 + 16 * Math.cos((angle * Math.PI) / 180)}
-          cy={52 + 16 * Math.sin((angle * Math.PI) / 180)}
-          rx="8" ry="12"
-          fill={i % 2 === 0 ? '#E91E63' : '#F06292'}
-          transform={`rotate(${angle}, ${60 + 16 * Math.cos((angle * Math.PI) / 180)}, ${52 + 16 * Math.sin((angle * Math.PI) / 180)})`}
-          initial={{ scale: 0 }} animate={{ scale: 1 }}
-          transition={{ delay: i * 0.06, duration: 0.4, type: 'spring' }} opacity="0.9" />
-      ))}
-      <circle cx="60" cy="52" r="9" fill="#FFC107" />
-      <circle cx="60" cy="52" r="5" fill="#FF8F00" />
+      <motion.g animate={{ scale: [1, 1.05, 1], rotate: [0, 3, -2, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} style={{ transformOrigin: '60px 65px' }}>
+        {petals.map((angle, i) => (
+          <motion.ellipse key={angle}
+            cx={60 + 16 * Math.cos((angle * Math.PI) / 180)}
+            cy={52 + 16 * Math.sin((angle * Math.PI) / 180)}
+            rx="8" ry="12"
+            fill={i % 2 === 0 ? '#E91E63' : '#F06292'}
+            transform={`rotate(${angle}, ${60 + 16 * Math.cos((angle * Math.PI) / 180)}, ${52 + 16 * Math.sin((angle * Math.PI) / 180)})`}
+            initial={{ scale: 0 }} animate={{ scale: 1 }}
+            transition={{ delay: i * 0.06, duration: 0.4, type: 'spring' }} opacity="0.9" />
+        ))}
+        <circle cx="60" cy="52" r="9" fill="#FFC107" />
+        <circle cx="60" cy="52" r="5" fill="#FF8F00" />
+      </motion.g>
     </g>
   );
 }
@@ -272,7 +274,7 @@ export default function BloomProgress({ percent, completedTasks, totalChapters, 
     const stage = getStage(p);
     return (
       <div style={{ width: '100%' }}>
-        <div className="progress-bar" style={{ height: '6px' }}>
+        <div className="progress-bar">
           <motion.div className="progress-fill" initial={{ width: 0 }}
             animate={{ width: `${p}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
         </div>
@@ -292,7 +294,7 @@ export default function BloomProgress({ percent, completedTasks, totalChapters, 
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
       {/* SVG visualization */}
       <div style={{ width: '140px', height: '130px', position: 'relative' }}>
-        <svg viewBox="0 0 120 120" width="140" height="130" style={{ overflow: 'visible' }}>
+        <svg viewBox="0 0 120 120" width="140" height="130" style={{ overflow: 'visible', filter: 'drop-shadow(0 6px 16px rgba(245, 87, 108, 0.35))' }}>
           <AnimatePresence mode="wait">
             {isGrandmaster ? (
               <GrandmasterTree key="tree" fruitCount={fruitCount} />
@@ -309,7 +311,7 @@ export default function BloomProgress({ percent, completedTasks, totalChapters, 
 
       {/* Progress bar — hard locked to 750 tasks */}
       <div style={{ width: '100%' }}>
-        <div className="progress-bar" style={{ height: '8px' }}>
+        <div className="progress-bar">
           <motion.div className="progress-fill" initial={{ width: 0 }}
             animate={{ width: `${Math.min(100, overallPct)}%` }}
             transition={{ duration: 1, ease: 'easeOut' }} />

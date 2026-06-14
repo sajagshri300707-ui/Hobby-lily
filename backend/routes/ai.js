@@ -3,6 +3,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const router = express.Router();
 
+// Log all AI route requests for debugging
+router.use((req, res, next) => {
+  console.log(`[AI] ${req.method} ${req.originalUrl}`, req.body?.hobbyName || req.body?.input || '');
+  next();
+});
+
 function getGenAI() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
@@ -17,7 +23,7 @@ function getModel(quality = 'lite') {
   return genAI.getGenerativeModel({ model: name });
 }
 
-// Retry once on 429/503 — but cap total wait at 15s so UI doesn't hang forever
+// Retry once on 429/503 — use Google's suggested retryDelay, minimum 1s
 async function generateWithRetry(model, prompt, retries = 1) {
   try {
     return await model.generateContent(prompt);
@@ -25,8 +31,12 @@ async function generateWithRetry(model, prompt, retries = 1) {
     const is429 = err.message?.includes('429');
     const is503 = err.message?.includes('503');
     if (retries > 0 && (is429 || is503)) {
-      const wait = is429 ? 15000 : 5000;
-      console.log(`Gemini ${is429 ? '429' : '503'} — retrying in ${wait/1000}s...`);
+      // Read the exact delay Google suggests
+      const delayMatch = err.message?.match(/retryDelay":"(\d+)s/);
+      const suggestedDelay = delayMatch ? parseInt(delayMatch[1]) * 1000 : 0;
+      // Use suggested delay + 500ms buffer, minimum 1s, maximum 30s
+      const wait = is429 ? Math.min(30000, Math.max(1000, suggestedDelay + 500)) : 3000;
+      console.log(`Gemini ${is429 ? '429' : '503'} — retrying in ${wait/1000}s (suggested: ${suggestedDelay/1000}s)`);
       await new Promise(r => setTimeout(r, wait));
       return generateWithRetry(model, prompt, retries - 1);
     }
@@ -135,14 +145,17 @@ Create exactly 5 chapters with 2-3 tasks each. ONLY the very first task (chapter
 
 // POST /api/ai/answer-doubt
 router.post('/answer-doubt', async (req, res) => {
-  const { question, description, hobbyName } = req.body;
+  const { question, description, hobbyName, language = 'en' } = req.body;
   if (!question) return res.status(400).json({ error: 'Question is required.' });
   try {
     const model = getModel('lite');
     const hobby = hobbyName || 'their hobby';
+    const langMap = { en:'English', hi:'Hindi', es:'Spanish', fr:'French', de:'German', ja:'Japanese', zh:'Chinese', ar:'Arabic', pt:'Portuguese', ko:'Korean' };
+    const langName = langMap[language] || 'English';
+    const langInstruction = language !== 'en' ? `Answer in ${langName}.` : '';
     const prompt = `You are a warm mentor helping a beginner learn ${hobby}.
 Question: "${question}"${description ? `\nContext: "${description}"` : ''}
-
+${langInstruction}
 Answer in 3-4 sentences. Start with empathy, give a clear solution, end with encouragement.`;
     const result = await generateWithRetry(model, prompt);
     res.json({ answer: result.response.text().trim() });
@@ -222,9 +235,113 @@ router.post('/bloom-prediction', async (req, res) => {
   }
 });
 
-// POST /api/ai/generate-chapter — generate ONE chapter at a time (infinite path)
+// POST /api/ai/extract-skills — extract transferable skills from completed hobby
+router.post('/extract-skills', async (req, res) => {
+  const { hobbyName, completedChapters = [], existingProfile = '' } = req.body;
+  if (!hobbyName) return res.status(400).json({ error: 'hobbyName required.' });
+  try {
+    const model = getModel('lite');
+    const taskList = completedChapters
+      .flatMap(c => (c.tasks || []).map(t => t.taskTitle))
+      .filter(Boolean)
+      .join(', ');
+
+    const existingContext = existingProfile
+      ? `Existing skill profile: "${existingProfile}". Update and expand this with new skills.`
+      : '';
+
+    const prompt = `A learner has completed these tasks while learning "${hobbyName}": ${taskList}
+${existingContext}
+
+List the transferable conceptual skills they now have that could help with other hobbies.
+Focus on concepts (e.g. "music theory", "rhythm", "color theory") not hobby-specific mechanics.
+Return ONLY a valid JSON array of skill strings (no markdown, max 10 skills):
+["skill 1", "skill 2"]`;
+
+    const result = await generateWithRetry(model, prompt);
+    const parsed = parseJsonFromText(result.response.text().trim());
+    const skills = Array.isArray(parsed) ? parsed : [];
+    res.json({ hobbyName, skills });
+  } catch (err) {
+    console.error('extract-skills error:', err.message);
+    res.status(500).json({ error: 'Failed to extract skills.' });
+  }
+});
+
+// POST /api/ai/condense-skills — condense skill profile to keep it compact
+router.post('/condense-skills', async (req, res) => {
+  const { hobbyName, skills = [], chaptersCompleted = 0 } = req.body;
+  if (!hobbyName) return res.status(400).json({ error: 'hobbyName required.' });
+  try {
+    const model = getModel('lite');
+    const prompt = `A learner has completed ${chaptersCompleted} chapters of "${hobbyName}" and has these skills: ${skills.join(', ')}.
+
+Write a concise 1-2 sentence skill profile summarising what they know. Be specific and mention the most transferable skills.
+Return ONLY the profile text, no JSON, no quotes.`;
+    const result = await generateWithRetry(model, prompt);
+    res.json({ hobbyName, profile: result.response.text().trim() });
+  } catch (err) {
+    console.error('condense-skills error:', err.message);
+    res.json({ hobbyName, profile: skills.join(', ') });
+  }
+});
+
+// POST /api/ai/assess-start-chapter — determine what chapter to start a new hobby at
+router.post('/assess-start-chapter', async (req, res) => {
+  const { hobbyName, inheritedSkills = {}, priorContext = '' } = req.body;
+  if (!hobbyName) return res.status(400).json({ error: 'hobbyName required.' });
+  try {
+    const model = getModel('lite');
+
+    const skillSummary = Object.entries(inheritedSkills)
+      .filter(([, data]) => data?.profile || data?.skills?.length > 0)
+      .map(([hobby, data]) => `From ${hobby}: ${data.profile || (data.skills || []).join(', ')}`)
+      .join('\n');
+
+    const contextSection = priorContext ? `Learner says: "${priorContext}"` : '';
+    const skillsSection = skillSummary ? `Transferable skills from other hobbies:\n${skillSummary}` : '';
+
+    if (!contextSection && !skillsSection) {
+      return res.json({ startChapter: 1, skippedChapters: 0, reason: '', skillsUsed: [] });
+    }
+
+    const prompt = `A learner wants to start learning "${hobbyName}".
+${contextSection}
+${skillsSection}
+
+Based on their existing knowledge, what chapter number should they start at?
+Chapter 1 = complete beginner. Chapter 5 = knows basics. Chapter 10 = solid intermediate. Chapter 20 = advanced.
+
+Return ONLY valid JSON (no markdown):
+{
+  "startChapter": <number 1-20>,
+  "skippedChapters": <startChapter - 1>,
+  "reason": "One sentence explaining what they already know and why we're skipping ahead",
+  "skillsUsed": ["skill1", "skill2"]
+}`;
+
+    const result = await generateWithRetry(model, prompt);
+    const parsed = parseJsonFromText(result.response.text().trim());
+    res.json({
+      startChapter: Math.max(1, Math.min(20, parsed.startChapter || 1)),
+      skippedChapters: Math.max(0, parsed.skippedChapters || 0),
+      reason: parsed.reason || '',
+      skillsUsed: parsed.skillsUsed || [],
+    });
+  } catch (err) {
+    console.error('assess-start-chapter error:', err.message);
+    res.json({ startChapter: 1, skippedChapters: 0, reason: '', skillsUsed: [] });
+  }
+});
+
+
 router.post('/generate-chapter', async (req, res) => {
-  const { hobbyName, chapterNumber, completedChapters = [], language = 'en', culturalContext = '' } = req.body;
+  const {
+    hobbyName, chapterNumber, completedChapters = [],
+    language = 'en', culturalContext = '',
+    priorContext = '',     // e.g. "I've played guitar for 2 years, know basic chords"
+    inheritedSkills = {},  // e.g. { "Guitar": ["music theory", "rhythm"] }
+  } = req.body;
   if (!hobbyName || !chapterNumber) return res.status(400).json({ error: 'hobbyName and chapterNumber required.' });
 
   const level = chapterNumber <= 5  ? 'complete beginner (no prior knowledge)'
@@ -239,6 +356,25 @@ router.post('/generate-chapter', async (req, res) => {
     ? `IMPORTANT: Write ALL text (titles, descriptions, tips, challenges) in ${langName}. Adapt all cultural references, song recommendations, artists, and examples to be relevant to ${culturalContext || langName + '-speaking cultures'}.`
     : culturalContext ? `Adapt cultural references and examples to: ${culturalContext}.` : '';
 
+  // Build knowledge inheritance context
+  let knowledgeContext = '';
+  if (priorContext) {
+    knowledgeContext += `\nPRIOR CONTEXT / NICHE: "${priorContext}"\n`;
+    if (chapterNumber === 1) {
+      knowledgeContext += `Based on this, assess their actual level and start the curriculum appropriately. If they are intermediate or advanced, skip beginner basics and start at a higher level. Explicitly mention in the chapter description what you are skipping and why.`;
+    }
+  }
+  const inheritedEntries = Object.entries(inheritedSkills).filter(([, skills]) => skills?.length > 0);
+  if (inheritedEntries.length > 0) {
+    const skillSummary = inheritedEntries.map(([hobby, skills]) =>
+      `From ${hobby}: ${skills.join(', ')}`
+    ).join('; ');
+    knowledgeContext += `\nTRANSFERABLE SKILLS / KNOWLEDGE INHERITANCE: ${skillSummary}\nDo NOT teach these concepts again. Reference them as existing knowledge.`;
+    if (chapterNumber === 1) {
+      knowledgeContext += ` Start the learner at a higher level because of these skills.`;
+    }
+  }
+
   let curriculumContext = '';
   if (completedChapters.length > 0) {
     const summary = completedChapters.map(c =>
@@ -247,9 +383,14 @@ router.post('/generate-chapter', async (req, res) => {
     curriculumContext = `\nCURRICULUM SO FAR (do NOT repeat any of these):\n${summary}\n\nThe next chapter MUST build on previous chapters, introduce genuinely new concepts, and be harder than all previous chapters.`;
   }
 
+  const ytSearchExample = language !== 'en'
+    ? `"${hobbyName} task-topic tutorial" — write this in ${langName}`
+    : `"${hobbyName} task-topic beginner tutorial"`;
+
   const prompt = `You are designing chapter ${chapterNumber} of an infinite learning curriculum for: "${hobbyName}".
 Skill level: ${level}.
 ${langInstruction}
+${knowledgeContext}
 ${curriculumContext}
 
 End with a REWARD TASK (task 15) — a real satisfying milestone the learner can show off (e.g. perform a song, complete a painting, print a photo).
@@ -270,7 +411,7 @@ Return ONLY valid JSON (no markdown):
     "status": "upcoming",
     "proTip": "One insider tip",
     "commonChallenges": [{ "challenge": "Common problem", "solution": "Specific solution", "upvotes": 5 }],
-    "youtubeSearch": "${hobbyName} task-topic tutorial"
+    "youtubeSearch": ${ytSearchExample}
   }]
 }
 
@@ -289,14 +430,30 @@ Create exactly 15 tasks. Task 15 = reward task. Chapter 1 task 1 = status "curre
   res.status(500).json({ error: 'Failed to generate chapter. Please try again.' });
 });
 
-// GET /api/ai/youtube-search?q=<query>
+// GET /api/ai/youtube-search?q=<query>&lang=<lang>
 router.get('/youtube-search', async (req, res) => {
-  const { q } = req.query;
+  const { q, lang = 'en' } = req.query;
   if (!q) return res.status(400).json({ error: 'Query parameter q is required.' });
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'YOUTUBE_API_KEY not configured.' });
+
+  // Map language code → YouTube regionCode + relevanceLanguage
+  const langConfig = {
+    hi: { regionCode: 'IN', relevanceLanguage: 'hi' },
+    es: { regionCode: 'ES', relevanceLanguage: 'es' },
+    fr: { regionCode: 'FR', relevanceLanguage: 'fr' },
+    de: { regionCode: 'DE', relevanceLanguage: 'de' },
+    ja: { regionCode: 'JP', relevanceLanguage: 'ja' },
+    zh: { regionCode: 'TW', relevanceLanguage: 'zh-Hant' },
+    ar: { regionCode: 'SA', relevanceLanguage: 'ar' },
+    pt: { regionCode: 'BR', relevanceLanguage: 'pt' },
+    ko: { regionCode: 'KR', relevanceLanguage: 'ko' },
+    en: { regionCode: 'US', relevanceLanguage: 'en' },
+  };
+  const { regionCode, relevanceLanguage } = langConfig[lang] || langConfig.en;
+
   try {
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=3&q=${encodeURIComponent(q)}&key=${apiKey}`;
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=3&q=${encodeURIComponent(q)}&regionCode=${regionCode}&relevanceLanguage=${relevanceLanguage}&videoEmbeddable=true&key=${apiKey}`;
     const searchRes = await fetch(searchUrl);
     if (!searchRes.ok) {
       console.error('YouTube API error:', searchRes.status, await searchRes.text());

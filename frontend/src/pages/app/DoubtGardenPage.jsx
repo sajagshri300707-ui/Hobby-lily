@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import PageMotion from '../../components/PageMotion';
 import { useToast } from '../../context/ToastContext';
 import api from '../../lib/api';
@@ -12,6 +13,8 @@ const FILTERS = ['All', ...HOBBY_TAGS];
 
 export default function DoubtGardenPage() {
   const { showToast } = useToast();
+  const { t } = useTranslation();
+  const lang = localStorage.getItem('hl_language') || 'en';
   const [questions, setQuestions] = useState(MOCK_QUESTIONS);
   const [selectedId, setSelectedId] = useState(MOCK_QUESTIONS[0].id);
   const [filter, setFilter] = useState('All');
@@ -33,6 +36,7 @@ export default function DoubtGardenPage() {
         question: modalForm.title.trim(),
         description: modalForm.description.trim(),
         hobbyName: modalForm.hobby,
+        language: lang,
       });
       setModalAiAnswer(res.data.answer);
     } catch {
@@ -94,9 +98,9 @@ export default function DoubtGardenPage() {
     <PageMotion style={{ padding: 'clamp(1.5rem, 3vw, 2.5rem)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', color: 'var(--ink)' }}>
-          Doubt Garden 🌿
+          {t('doubts.title')}
         </h1>
-        <button type="button" className="btn btn-primary" onClick={() => setShowModal(true)}>Ask a Doubt</button>
+        <button type="button" className="btn btn-primary" onClick={() => setShowModal(true)}>{t('doubts.askDoubt')}</button>
       </div>
       <div className="filter-tabs" style={{ marginBottom: '1.5rem' }}>
         {FILTERS.map((f) => (
@@ -133,15 +137,15 @@ export default function DoubtGardenPage() {
             </p>
             {selected.aiAnswer && (
               <div className="ai-answer-card" style={{ marginBottom: '1.5rem' }}>
-                <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>🤖 HobbyLily AI says:</p>
+                <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px', fontFamily: 'var(--font-body)' }}>{t('doubts.aiSays')}</p>
                 <p style={{ fontSize: '0.9rem', lineHeight: 1.7, fontFamily: 'var(--font-body)', color: 'var(--ink-soft)' }}>{selected.aiAnswer}</p>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '1rem', flexWrap: 'wrap' }}>
-                  <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${selected.hobby} ${selected.title} beginner tutorial`)}`} target="_blank" rel="noopener noreferrer" style={{ background: '#FEE2E2', color: '#991B1B', padding: '6px 14px', borderRadius: '99px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>📺 Watch on YouTube →</a>
-                  <a href={`https://www.google.com/search?q=${encodeURIComponent(`${selected.hobby} ${selected.title} beginner guide tips`)}`} target="_blank" rel="noopener noreferrer" style={{ background: '#EBF4F8', color: '#1565C0', padding: '6px 14px', borderRadius: '99px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>📖 Read articles →</a>
+                  <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${selected.hobby} ${selected.title} tutorial`)}&hl=${lang}`} target="_blank" rel="noopener noreferrer" style={{ background: '#FEE2E2', color: '#991B1B', padding: '6px 14px', borderRadius: '99px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>📺 Watch on YouTube →</a>
+                  <a href={`https://www.google.com/search?q=${encodeURIComponent(`${selected.hobby} ${selected.title} beginner guide`)}&hl=${lang}`} target="_blank" rel="noopener noreferrer" style={{ background: '#EBF4F8', color: '#1565C0', padding: '6px 14px', borderRadius: '99px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>📖 {t('path.readArticles')}</a>
                 </div>
               </div>
             )}
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1rem' }}>Community answers</h3>
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', marginBottom: '1rem' }}>{t('doubts.communityAnswers')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
               {[...selected.answers].sort((a, b) => (b.best ? 1 : 0) - (a.best ? 1 : 0)).map((a) => (
                 <div
@@ -163,7 +167,7 @@ export default function DoubtGardenPage() {
                       <span style={{ fontWeight: 600, fontSize: '0.88rem', fontFamily: 'var(--font-body)' }}>{a.name}</span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--ink-muted)', marginLeft: '8px' }}>{a.stage}</span>
                       {a.fullBloom && <span style={{ marginLeft: '6px' }}>🌸</span>}
-                      {a.best && <span style={{ marginLeft: '8px', fontSize: '0.72rem', color: 'var(--gold)', fontWeight: 700 }}>✓ Best Answer</span>}
+                      {a.best && <span style={{ marginLeft: '8px', fontSize: '0.72rem', color: 'var(--gold)', fontWeight: 700 }}>{t('doubts.bestAnswer')}</span>}
                     </div>
                   </div>
                   <p style={{ fontSize: '0.9rem', lineHeight: 1.6, fontFamily: 'var(--font-body)', color: 'var(--ink-soft)', marginBottom: '8px' }}>{a.text}</p>
@@ -173,15 +177,8 @@ export default function DoubtGardenPage() {
                 </div>
               ))}
             </div>
-            <textarea
-              className="form-input"
-              rows={3}
-              placeholder="Share your experience…"
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              style={{ marginBottom: '0.75rem', resize: 'vertical' }}
-            />
-            <button type="button" className="btn btn-primary btn-sm" onClick={postAnswer}>Post Answer</button>
+            <textarea className="form-input" rows={3} placeholder={t('doubts.shareExperience')} value={answerText} onChange={(e) => setAnswerText(e.target.value)} style={{ marginBottom: '0.75rem', resize: 'vertical' }} />
+            <button type="button" className="btn btn-primary btn-sm" onClick={postAnswer}>{t('doubts.postAnswer')}</button>
           </div>
         )}
       </div>
@@ -189,31 +186,31 @@ export default function DoubtGardenPage() {
         {showModal && (
           <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
             <motion.div className="modal-box modal-mobile-full" style={{ padding: '1.75rem' }} onClick={(e) => e.stopPropagation()}>
-              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', marginBottom: '1rem' }}>Ask a Doubt</h2>
+              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', marginBottom: '1rem' }}>{t('doubts.askDoubt')}</h2>
               <select className="form-input" value={modalForm.hobby} onChange={(e) => setModalForm((f) => ({ ...f, hobby: e.target.value }))} style={{ marginBottom: '0.75rem' }}>
                 {HOBBY_TAGS.map((h) => <option key={h}>{h}</option>)}
               </select>
               <input className="form-input" maxLength={100} placeholder="Question title (max 100 chars)" value={modalForm.title} onChange={(e) => setModalForm((f) => ({ ...f, title: e.target.value }))} style={{ marginBottom: '0.75rem' }} />
               <textarea className="form-input" rows={3} placeholder="More details (optional)" value={modalForm.description} onChange={(e) => setModalForm((f) => ({ ...f, description: e.target.value }))} style={{ marginBottom: '1rem', resize: 'none' }} />
               <button type="button" className="btn btn-primary btn-sm" style={{ width: '100%', marginBottom: '1rem', justifyContent: 'center' }} onClick={handleAiFirst} disabled={modalLoading || !modalForm.title.trim()}>
-                {modalLoading ? 'Thinking…' : '✨ AI First Answer'}
+                {modalLoading ? t('doubts.thinking') : t('doubts.aiFirst')}
               </button>
               {modalAiAnswer && (
                 <div className="ai-answer-card" style={{ marginBottom: '1rem' }}>
-                  <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px' }}>🤖 HobbyLily AI says:</p>
+                  <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '8px' }}>{t('doubts.aiSays')}</p>
                   <p style={{ fontSize: '0.9rem', lineHeight: 1.7, color: 'var(--ink-soft)', whiteSpace: 'pre-wrap' }}>{modalAiAnswer}</p>
                   <div style={{ display: 'flex', gap: '10px', marginTop: '1rem', flexWrap: 'wrap' }}>
-                    <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${modalForm.hobby} ${modalForm.title} beginner tutorial`)}`} target="_blank" rel="noopener noreferrer" style={{ background: '#FEE2E2', color: '#991B1B', padding: '6px 14px', borderRadius: '99px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>📺 Watch on YouTube →</a>
-                    <a href={`https://www.google.com/search?q=${encodeURIComponent(`${modalForm.hobby} ${modalForm.title} beginner guide tips`)}`} target="_blank" rel="noopener noreferrer" style={{ background: '#EBF4F8', color: '#1565C0', padding: '6px 14px', borderRadius: '99px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>📖 Read articles →</a>
+                    <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${modalForm.hobby} ${modalForm.title} tutorial`)}&hl=${lang}`} target="_blank" rel="noopener noreferrer" style={{ background: '#FEE2E2', color: '#991B1B', padding: '6px 14px', borderRadius: '99px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>📺 Watch on YouTube →</a>
+                    <a href={`https://www.google.com/search?q=${encodeURIComponent(`${modalForm.hobby} ${modalForm.title} beginner guide`)}&hl=${lang}`} target="_blank" rel="noopener noreferrer" style={{ background: '#EBF4F8', color: '#1565C0', padding: '6px 14px', borderRadius: '99px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>📖 {t('path.readArticles')}</a>
                   </div>
                 </div>
               )}
               {modalAiAnswer && (
                 <button type="button" className="btn btn-gold" style={{ width: '100%', justifyContent: 'center' }} onClick={postToCommunity}>
-                  Still need help? Post to community →
+                  {t('doubts.postCommunity')}
                 </button>
               )}
-              <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.75rem', width: '100%' }} onClick={() => setShowModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.75rem', width: '100%' }} onClick={() => setShowModal(false)}>{t('doubts.cancel')}</button>
             </motion.div>
           </motion.div>
         )}

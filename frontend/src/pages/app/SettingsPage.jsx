@@ -63,13 +63,19 @@ export default function SettingsPage() {
             <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brown-light), var(--brown-coffee))', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1.2rem' }}>{initials}</div>
             <div>
               <div style={{ fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--ink)' }}>{name || user?.name}</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--ink-muted)' }}>{user?.email}</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--ink-muted)' }}>{user?.email || user?.phone || ''}</div>
             </div>
           </div>
           <label className="form-label">{t('settings.name')}</label>
           <input className="form-input" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: '1rem' }} />
           <label className="form-label">{t('settings.email')}</label>
-          <input className="form-input" value={user?.email || ''} disabled style={{ marginBottom: '1rem', opacity: 0.6 }} />
+          <input className="form-input" value={user?.email || 'Not set'} disabled style={{ marginBottom: '1rem', opacity: 0.6 }} />
+          {user?.phone && (
+            <>
+              <label className="form-label">Phone</label>
+              <input className="form-input" value={user.phone} disabled style={{ marginBottom: '1rem', opacity: 0.6 }} />
+            </>
+          )}
           <label className="form-label">{t('settings.bio')}</label>
           <textarea className="form-input" rows={3} placeholder={t('settings.bioPlaceholder')} value={bio} onChange={(e) => setBio(e.target.value)} style={{ resize: 'vertical' }} />
         </div>

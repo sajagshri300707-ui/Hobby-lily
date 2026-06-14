@@ -68,7 +68,7 @@ function Avatar({ initials, color, size = 36 }) {
       width: size, height: size, borderRadius: '50%',
       background: color, color: 'white',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 700, fontSize: size * 0.22 + 'rem', flexShrink: 0,
+      fontWeight: 700, fontSize: Math.round(size * 0.36) + 'px', flexShrink: 0,
     }}>{initials}</div>
   );
 }

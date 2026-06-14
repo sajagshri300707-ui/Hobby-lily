@@ -90,8 +90,8 @@ router.patch('/:id/complete', authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/tasks/hobby/:hobbyId/bulk — seed tasks from AI
-router.post('/hobby/:hobbyId/bulk', authMiddleware, async (req, res) => {
+// POST /api/tasks/hobby/:hobbyId/sync — upsert tasks from AI
+router.post('/hobby/:hobbyId/sync', authMiddleware, async (req, res) => {
   const { tasks } = req.body;
   if (!tasks || !Array.isArray(tasks)) return res.status(400).json({ error: 'Tasks array required.' });
   try {
@@ -101,24 +101,24 @@ router.post('/hobby/:hobbyId/bulk', authMiddleware, async (req, res) => {
     );
     if (hobbyCheck.rows.length === 0) return res.status(404).json({ error: 'Hobby not found.' });
 
-    // Delete existing tasks
-    await pool.query('DELETE FROM tasks WHERE hobby_id = $1', [req.params.hobbyId]);
-
     const inserted = [];
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i];
-      const status = i === 0 ? 'current' : 'upcoming';
+      // Insert if new, UPDATE if exists
       const result = await pool.query(
-        `INSERT INTO tasks (hobby_id, title, description, estimated_time, status, order_index)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [req.params.hobbyId, t.title, t.description || '', t.estimatedTime || '1 hour', status, i + 1]
+        `INSERT INTO tasks (id, hobby_id, title, description, estimated_time, status, order_index)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (id) DO UPDATE 
+         SET status = EXCLUDED.status, title = EXCLUDED.title, description = EXCLUDED.description
+         RETURNING *`,
+        [t.id, req.params.hobbyId, t.taskTitle || t.title, t.taskDescription || t.description || '', t.estimatedTime || '1 hour', t.status, i + 1]
       );
       inserted.push(result.rows[0]);
     }
     res.json(inserted);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to insert tasks.' });
+    res.status(500).json({ error: 'Failed to sync tasks.' });
   }
 });
 

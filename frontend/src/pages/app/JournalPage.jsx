@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import DOMPurify from 'dompurify';
 import PageMotion from '../../components/PageMotion';
 import { useToast } from '../../context/ToastContext';
 import { HOBBY_TAGS, formatJournalDate } from '../../lib/constants';
@@ -358,7 +359,7 @@ function BlogPreview({ draft }) {
         <div
           className="blog-preview-body"
           style={{ fontFamily: fonts.body, color: theme.text }}
-          dangerouslySetInnerHTML={{ __html: draft.content || '<p style="opacity:0.4;font-style:italic">Your story will appear here…</p>' }}
+          dangerouslySetInnerHTML={{ __html: draft.content ? DOMPurify.sanitize(draft.content) : '<p style="opacity:0.4;font-style:italic">Your story will appear here…</p>' }}
         />
 
         {/* Tags */}

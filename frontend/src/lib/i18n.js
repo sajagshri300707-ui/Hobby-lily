@@ -148,6 +148,33 @@ const resources = {
         messagePerson: 'Message {{name}}…',
         demoReply: '🌱 Thanks for the message! (This is a demo reply)',
       },
+      login: {
+        welcomeBack: 'Welcome back',
+        title: 'Sign in to your garden',
+        noAccount: "Don't have an account?",
+        startGrowing: 'Start growing →',
+        tryDemo: 'Try the demo account',
+        demoHint: 'Click to fill: demo@hobbylily.com',
+        email: 'Email address',
+        password: 'Password',
+        submit: 'Sign in to my garden 🌸',
+        orContinue: 'or',
+        google: 'Continue with Google',
+      },
+      signup: {
+        joinGarden: 'Join the garden',
+        title: 'Create your account',
+        alreadyGrowing: 'Already growing?',
+        signIn: 'Sign in →',
+        name: 'Your name',
+        namePlaceholder: 'What should we call you?',
+        email: 'Email address',
+        password: 'Password',
+        passwordHint: 'At least 6 characters',
+        submit: 'Plant my first seed 🌱',
+        agree: 'By signing up, you agree to grow honestly and support others.',
+        google: 'Continue with Google',
+      },
     },
   },
 };
@@ -162,6 +189,8 @@ resources.hi = { translation: {
   settings: { title: 'सेटिंग्स ⚙️', profile: 'प्रोफ़ाइल', appearance: 'दिखावट', darkMode: 'डार्क मोड', darkModeDesc: 'लाइट और डार्क थीम के बीच स्विच करें', language: 'भाषा', languageDesc: 'अपनी पसंदीदा भाषा चुनें', notifications: 'सूचनाएं', dailyReminder: 'दैनिक अनुस्मारक', weeklyInsights: 'साप्ताहिक अंतर्दृष्टि', communityReactions: 'समुदाय प्रतिक्रियाएं', privacy: 'गोपनीयता', journalPublic: 'डायरी डिफ़ॉल्ट रूप से सार्वजनिक करें', dangerZone: 'खतरा क्षेत्र', resetGarden: 'बगीचा रीसेट करें', save: 'सहेजें', name: 'नाम', email: 'ईमेल', bio: 'परिचय', bioPlaceholder: 'बगीचे को अपने बारे में बताएं…' },
   common: { loading: 'आपका बगीचा लोड हो रहा है…', cancel: 'रद्द करें', save: 'सहेजें', post: 'पोस्ट करें', send: 'भेजें', back: '← वापस', tryAgain: 'फिर कोशिश करें', searchPlaceholder: 'शौक, कार्य, समुदाय खोजें…', signOut: 'साइन आउट', justNow: 'अभी', bloomStages: { seed: 'बीज', sprout: 'अंकुर', bud: 'कली', bloom: 'खिलाव', full_bloom: 'पूर्ण खिलाव' } },
   community: { title: 'समुदाय फ़ीड', subtitle: 'कोई दिखावा नहीं। बस असली प्रगति।', postToGarden: 'बगीचे में पोस्ट करें 🌸', comments: 'टिप्पणियां 💬', noComments: 'पहली टिप्पणी करें 🌱', writeComment: 'टिप्पणी लिखें…', messagePerson: '{{name}} को संदेश…', demoReply: '🌱 संदेश के लिए धन्यवाद! (यह एक डेमो जवाब है)' },
+  login: { welcomeBack: 'वापस स्वागत है', title: 'अपने बगीचे में साइन इन करें', noAccount: 'खाता नहीं है?', startGrowing: 'शुरू करें →', tryDemo: 'डेमो खाता आज़माएं', demoHint: 'क्लिक करें: demo@hobbylily.com', email: 'ईमेल पता', password: 'पासवर्ड', submit: 'बगीचे में साइन इन करें 🌸', orContinue: 'या', google: 'Google से जारी रखें' },
+  signup: { joinGarden: 'बगीचे में शामिल हों', title: 'अपना खाता बनाएं', alreadyGrowing: 'पहले से बढ़ रहे हैं?', signIn: 'साइन इन करें →', name: 'आपका नाम', namePlaceholder: 'हम आपको क्या बुलाएं?', email: 'ईमेल पता', password: 'पासवर्ड', passwordHint: 'कम से कम 6 अक्षर', submit: 'पहला बीज लगाएं 🌱', agree: 'साइन अप करके, आप ईमानदारी से बढ़ने और दूसरों का समर्थन करने के लिए सहमत हैं।', google: 'Google से जारी रखें' },
 }};
 
 // ─── Spanish ─────────────────────────────────────────────────────────────────
@@ -174,6 +203,8 @@ resources.es = { translation: {
   settings: { title: 'Ajustes ⚙️', profile: 'Perfil', appearance: 'Apariencia', darkMode: 'Modo oscuro', darkModeDesc: 'Cambiar entre temas claro y oscuro', language: 'Idioma', languageDesc: 'Elige tu idioma preferido', notifications: 'Notificaciones', dailyReminder: 'Recordatorio diario', weeklyInsights: 'Perspectivas semanales', communityReactions: 'Reacciones de la comunidad', privacy: 'Privacidad', journalPublic: 'Mostrar diario públicamente por defecto', dangerZone: 'Zona de peligro', resetGarden: 'Reiniciar jardín', save: 'Guardar', name: 'Nombre', email: 'Correo', bio: 'Bio', bioPlaceholder: 'Cuéntale al jardín sobre ti…' },
   common: { loading: 'Cargando tu jardín…', cancel: 'Cancelar', save: 'Guardar', post: 'Publicar', send: 'Enviar', back: '← Atrás', tryAgain: 'Intentar de nuevo', searchPlaceholder: 'Buscar hobbies, tareas, comunidad…', signOut: 'Cerrar sesión', justNow: 'ahora mismo', bloomStages: { seed: 'Semilla', sprout: 'Brote', bud: 'Capullo', bloom: 'Floración', full_bloom: 'Plena Floración' } },
   community: { title: 'Feed de la Comunidad', subtitle: 'Sin poses. Solo progreso real.', postToGarden: 'Publicar en el Jardín 🌸', comments: 'Comentarios 💬', noComments: 'Sé el primero en comentar 🌱', writeComment: 'Escribe un comentario…', messagePerson: 'Mensaje a {{name}}…', demoReply: '🌱 ¡Gracias por el mensaje! (Esta es una respuesta de demo)' },
+  login: { welcomeBack: 'Bienvenido de nuevo', title: 'Inicia sesión en tu jardín', noAccount: '¿No tienes cuenta?', startGrowing: 'Empieza a crecer →', tryDemo: 'Prueba la cuenta demo', demoHint: 'Clic para rellenar: demo@hobbylily.com', email: 'Correo electrónico', password: 'Contraseña', submit: 'Entrar a mi jardín 🌸', orContinue: 'o', google: 'Continuar con Google' },
+  signup: { joinGarden: 'Únete al jardín', title: 'Crea tu cuenta', alreadyGrowing: '¿Ya estás creciendo?', signIn: 'Inicia sesión →', name: 'Tu nombre', namePlaceholder: '¿Cómo debemos llamarte?', email: 'Correo electrónico', password: 'Contraseña', passwordHint: 'Al menos 6 caracteres', submit: 'Plantar mi primera semilla 🌱', agree: 'Al registrarte, aceptas crecer honestamente y apoyar a otros.', google: 'Continuar con Google' },
 }};
 
 // ─── French ──────────────────────────────────────────────────────────────────
@@ -186,6 +217,8 @@ resources.fr = { translation: {
   settings: { title: 'Paramètres ⚙️', profile: 'Profil', appearance: 'Apparence', darkMode: 'Mode sombre', darkModeDesc: 'Basculer entre les thèmes clair et sombre', language: 'Langue', languageDesc: 'Choisissez votre langue préférée', notifications: 'Notifications', dailyReminder: 'Rappel quotidien', weeklyInsights: 'Aperçus hebdomadaires', communityReactions: 'Réactions de la communauté', privacy: 'Confidentialité', journalPublic: 'Afficher le journal publiquement par défaut', dangerZone: 'Zone de danger', resetGarden: 'Réinitialiser le jardin', save: 'Sauvegarder', name: 'Nom', email: 'Email', bio: 'Bio', bioPlaceholder: 'Parlez de vous au jardin…' },
   common: { loading: 'Chargement de votre jardin…', cancel: 'Annuler', save: 'Sauvegarder', post: 'Publier', send: 'Envoyer', back: '← Retour', tryAgain: 'Réessayer', searchPlaceholder: 'Rechercher hobbies, tâches, communauté…', signOut: 'Se déconnecter', justNow: "à l'instant", bloomStages: { seed: 'Graine', sprout: 'Pousse', bud: 'Bourgeon', bloom: 'Floraison', full_bloom: 'Pleine Floraison' } },
   community: { title: 'Fil de la Communauté', subtitle: 'Pas de mise en scène. Juste du vrai progrès.', postToGarden: 'Publier dans le Jardin 🌸', comments: 'Commentaires 💬', noComments: 'Soyez le premier à commenter 🌱', writeComment: 'Écrire un commentaire…', messagePerson: 'Message à {{name}}…', demoReply: '🌱 Merci pour le message! (Ceci est une réponse de démo)' },
+  login: { welcomeBack: 'Bon retour', title: 'Connectez-vous à votre jardin', noAccount: "Pas de compte?", startGrowing: 'Commencer à grandir →', tryDemo: 'Essayer le compte démo', demoHint: 'Cliquez pour remplir: demo@hobbylily.com', email: 'Adresse e-mail', password: 'Mot de passe', submit: 'Entrer dans mon jardin 🌸', orContinue: 'ou', google: 'Continuer avec Google' },
+  signup: { joinGarden: 'Rejoindre le jardin', title: 'Créer votre compte', alreadyGrowing: 'Déjà en train de grandir?', signIn: 'Se connecter →', name: 'Votre nom', namePlaceholder: 'Comment vous appeler?', email: 'Adresse e-mail', password: 'Mot de passe', passwordHint: 'Au moins 6 caractères', submit: 'Planter ma première graine 🌱', agree: "En vous inscrivant, vous acceptez de grandir honnêtement et de soutenir les autres.", google: 'Continuer avec Google' },
 }};
 
 // ─── German ──────────────────────────────────────────────────────────────────
@@ -198,6 +231,8 @@ resources.de = { translation: {
   settings: { title: 'Einstellungen ⚙️', profile: 'Profil', appearance: 'Erscheinungsbild', darkMode: 'Dunkelmodus', darkModeDesc: 'Zwischen hellem und dunklem Thema wechseln', language: 'Sprache', languageDesc: 'Bevorzugte Sprache wählen', notifications: 'Benachrichtigungen', dailyReminder: 'Tägliche Erinnerung', weeklyInsights: 'Wöchentliche Einblicke', communityReactions: 'Community-Reaktionen', privacy: 'Datenschutz', journalPublic: 'Tagebuch standardmäßig öffentlich zeigen', dangerZone: 'Gefahrenzone', resetGarden: 'Garten zurücksetzen', save: 'Speichern', name: 'Name', email: 'E-Mail', bio: 'Bio', bioPlaceholder: 'Erzähl dem Garten von dir…' },
   common: { loading: 'Dein Garten wird geladen…', cancel: 'Abbrechen', save: 'Speichern', post: 'Posten', send: 'Senden', back: '← Zurück', tryAgain: 'Erneut versuchen', searchPlaceholder: 'Hobbys, Aufgaben, Community suchen…', signOut: 'Abmelden', justNow: 'gerade eben', bloomStages: { seed: 'Samen', sprout: 'Sprössling', bud: 'Knospe', bloom: 'Blüte', full_bloom: 'Volle Blüte' } },
   community: { title: 'Community-Feed', subtitle: 'Kein Hochglanz. Nur echter Fortschritt.', postToGarden: 'Im Garten posten 🌸', comments: 'Kommentare 💬', noComments: 'Sei der Erste, der kommentiert 🌱', writeComment: 'Kommentar schreiben…', messagePerson: 'Nachricht an {{name}}…', demoReply: '🌱 Danke für die Nachricht! (Dies ist eine Demo-Antwort)' },
+  login: { welcomeBack: 'Willkommen zurück', title: 'In deinen Garten einloggen', noAccount: 'Kein Konto?', startGrowing: 'Jetzt starten →', tryDemo: 'Demo-Konto ausprobieren', demoHint: 'Klicken zum Ausfüllen: demo@hobbylily.com', email: 'E-Mail-Adresse', password: 'Passwort', submit: 'In meinen Garten einloggen 🌸', orContinue: 'oder', google: 'Mit Google fortfahren' },
+  signup: { joinGarden: 'Dem Garten beitreten', title: 'Konto erstellen', alreadyGrowing: 'Schon dabei?', signIn: 'Einloggen →', name: 'Dein Name', namePlaceholder: 'Wie sollen wir dich nennen?', email: 'E-Mail-Adresse', password: 'Passwort', passwordHint: 'Mindestens 6 Zeichen', submit: 'Ersten Samen pflanzen 🌱', agree: 'Mit der Anmeldung stimmst du zu, ehrlich zu wachsen und andere zu unterstützen.', google: 'Mit Google fortfahren' },
 }};
 
 // ─── Japanese ────────────────────────────────────────────────────────────────
@@ -210,6 +245,8 @@ resources.ja = { translation: {
   settings: { title: '設定 ⚙️', profile: 'プロフィール', appearance: '外観', darkMode: 'ダークモード', darkModeDesc: 'ライトとダークテーマを切り替え', language: '言語', languageDesc: '希望の言語を選択', notifications: '通知', dailyReminder: '毎日のリマインダー', weeklyInsights: '週次インサイト', communityReactions: 'コミュニティリアクション', privacy: 'プライバシー', journalPublic: 'デフォルトでジャーナルを公開', dangerZone: '危険ゾーン', resetGarden: '庭をリセット', save: '保存', name: '名前', email: 'メール', bio: '自己紹介', bioPlaceholder: '庭に自己紹介してください…' },
   common: { loading: '庭を読み込み中…', cancel: 'キャンセル', save: '保存', post: '投稿', send: '送信', back: '← 戻る', tryAgain: 'もう一度試す', searchPlaceholder: '趣味、タスク、コミュニティを検索…', signOut: 'サインアウト', justNow: 'たった今', bloomStages: { seed: '種', sprout: '芽', bud: 'つぼみ', bloom: '開花', full_bloom: '満開' } },
   community: { title: 'コミュニティフィード', subtitle: 'ハイライトなし。本物の進歩だけ。', postToGarden: '庭に投稿 🌸', comments: 'コメント 💬', noComments: '最初にコメントしてください 🌱', writeComment: 'コメントを書く…', messagePerson: '{{name}}へのメッセージ…', demoReply: '🌱 メッセージありがとう！（これはデモの返信です）' },
+  login: { welcomeBack: 'おかえりなさい', title: '庭にサインイン', noAccount: 'アカウントをお持ちでないですか?', startGrowing: '始める →', tryDemo: 'デモアカウントを試す', demoHint: 'クリックして入力: demo@hobbylily.com', email: 'メールアドレス', password: 'パスワード', submit: '庭にサインイン 🌸', orContinue: 'または', google: 'Googleで続ける' },
+  signup: { joinGarden: '庭に参加', title: 'アカウントを作成', alreadyGrowing: 'すでに成長中ですか?', signIn: 'サインイン →', name: 'あなたの名前', namePlaceholder: '何と呼べばいいですか?', email: 'メールアドレス', password: 'パスワード', passwordHint: '6文字以上', submit: '最初の種を植える 🌱', agree: '登録することで、正直に成長し、他の人をサポートすることに同意します。', google: 'Googleで続ける' },
 }};
 
 // ─── Chinese ─────────────────────────────────────────────────────────────────
@@ -222,6 +259,8 @@ resources.zh = { translation: {
   settings: { title: '设置 ⚙️', profile: '个人资料', appearance: '外观', darkMode: '深色模式', darkModeDesc: '在浅色和深色主题之间切换', language: '语言', languageDesc: '选择你的首选语言', notifications: '通知', dailyReminder: '每日提醒', weeklyInsights: '每周洞察', communityReactions: '社区反应', privacy: '隐私', journalPublic: '默认公开显示日记', dangerZone: '危险区域', resetGarden: '重置花园', save: '保存', name: '姓名', email: '邮箱', bio: '简介', bioPlaceholder: '向花园介绍你自己…' },
   common: { loading: '正在加载你的花园…', cancel: '取消', save: '保存', post: '发布', send: '发送', back: '← 返回', tryAgain: '再试一次', searchPlaceholder: '搜索爱好、任务、社区…', signOut: '退出登录', justNow: '刚刚', bloomStages: { seed: '种子', sprout: '嫩芽', bud: '花蕾', bloom: '开花', full_bloom: '盛开' } },
   community: { title: '社区动态', subtitle: '没有精彩集锦，只有真实进步。', postToGarden: '发布到花园 🌸', comments: '评论 💬', noComments: '成为第一个评论的人 🌱', writeComment: '写评论…', messagePerson: '给{{name}}发消息…', demoReply: '🌱 感谢你的消息！（这是演示回复）' },
+  login: { welcomeBack: '欢迎回来', title: '登录你的花园', noAccount: '没有账号?', startGrowing: '开始成长 →', tryDemo: '试用演示账号', demoHint: '点击填写: demo@hobbylily.com', email: '电子邮件', password: '密码', submit: '登录我的花园 🌸', orContinue: '或', google: '使用Google继续' },
+  signup: { joinGarden: '加入花园', title: '创建账号', alreadyGrowing: '已经在成长了?', signIn: '登录 →', name: '你的名字', namePlaceholder: '我们该怎么称呼你?', email: '电子邮件', password: '密码', passwordHint: '至少6个字符', submit: '种下我的第一颗种子 🌱', agree: '注册即表示您同意诚实成长并支持他人。', google: '使用Google继续' },
 }};
 
 // ─── Arabic ──────────────────────────────────────────────────────────────────
@@ -234,6 +273,8 @@ resources.ar = { translation: {
   settings: { title: 'الإعدادات ⚙️', profile: 'الملف الشخصي', appearance: 'المظهر', darkMode: 'الوضع الداكن', darkModeDesc: 'التبديل بين السمات الفاتحة والداكنة', language: 'اللغة', languageDesc: 'اختر لغتك المفضلة', notifications: 'الإشعارات', dailyReminder: 'تذكير يومي', weeklyInsights: 'رؤى أسبوعية', communityReactions: 'تفاعلات المجتمع', privacy: 'الخصوصية', journalPublic: 'عرض المذكرة علناً بشكل افتراضي', dangerZone: 'منطقة الخطر', resetGarden: 'إعادة تعيين الحديقة', save: 'حفظ', name: 'الاسم', email: 'البريد الإلكتروني', bio: 'نبذة', bioPlaceholder: 'أخبر الحديقة عن نفسك…' },
   common: { loading: 'جارٍ تحميل حديقتك…', cancel: 'إلغاء', save: 'حفظ', post: 'نشر', send: 'إرسال', back: '← رجوع', tryAgain: 'حاول مجدداً', searchPlaceholder: 'ابحث عن هوايات، مهام، مجتمع…', signOut: 'تسجيل الخروج', justNow: 'الآن', bloomStages: { seed: 'بذرة', sprout: 'برعم', bud: 'كُمّة', bloom: 'تفتح', full_bloom: 'تفتح كامل' } },
   community: { title: 'تغذية المجتمع', subtitle: 'لا مقاطع مميزة. فقط تقدم حقيقي.', postToGarden: 'نشر في الحديقة 🌸', comments: 'التعليقات 💬', noComments: 'كن أول من يعلق 🌱', writeComment: 'اكتب تعليقاً…', messagePerson: 'رسالة إلى {{name}}…', demoReply: '🌱 شكراً على رسالتك! (هذا رد تجريبي)' },
+  login: { welcomeBack: 'مرحباً بعودتك', title: 'سجّل دخولك إلى حديقتك', noAccount: 'ليس لديك حساب؟', startGrowing: 'ابدأ النمو →', tryDemo: 'جرّب الحساب التجريبي', demoHint: 'انقر للملء: demo@hobbylily.com', email: 'البريد الإلكتروني', password: 'كلمة المرور', submit: 'الدخول إلى حديقتي 🌸', orContinue: 'أو', google: 'المتابعة مع Google' },
+  signup: { joinGarden: 'انضم إلى الحديقة', title: 'إنشاء حسابك', alreadyGrowing: 'تنمو بالفعل؟', signIn: 'تسجيل الدخول →', name: 'اسمك', namePlaceholder: 'كيف نناديك؟', email: 'البريد الإلكتروني', password: 'كلمة المرور', passwordHint: '6 أحرف على الأقل', submit: 'زرع بذرتي الأولى 🌱', agree: 'بالتسجيل، توافق على النمو بصدق ودعم الآخرين.', google: 'المتابعة مع Google' },
 }};
 
 // ─── Portuguese ──────────────────────────────────────────────────────────────
@@ -246,6 +287,8 @@ resources.pt = { translation: {
   settings: { title: 'Configurações ⚙️', profile: 'Perfil', appearance: 'Aparência', darkMode: 'Modo escuro', darkModeDesc: 'Alternar entre temas claro e escuro', language: 'Idioma', languageDesc: 'Escolha seu idioma preferido', notifications: 'Notificações', dailyReminder: 'Lembrete diário', weeklyInsights: 'Insights semanais', communityReactions: 'Reações da comunidade', privacy: 'Privacidade', journalPublic: 'Mostrar diário publicamente por padrão', dangerZone: 'Zona de perigo', resetGarden: 'Redefinir jardim', save: 'Salvar', name: 'Nome', email: 'Email', bio: 'Bio', bioPlaceholder: 'Conte ao jardim sobre você…' },
   common: { loading: 'Carregando seu jardim…', cancel: 'Cancelar', save: 'Salvar', post: 'Publicar', send: 'Enviar', back: '← Voltar', tryAgain: 'Tentar novamente', searchPlaceholder: 'Pesquisar hobbies, tarefas, comunidade…', signOut: 'Sair', justNow: 'agora mesmo', bloomStages: { seed: 'Semente', sprout: 'Broto', bud: 'Botão', bloom: 'Floração', full_bloom: 'Plena Floração' } },
   community: { title: 'Feed da Comunidade', subtitle: 'Sem destaques. Só progresso real.', postToGarden: 'Publicar no Jardim 🌸', comments: 'Comentários 💬', noComments: 'Seja o primeiro a comentar 🌱', writeComment: 'Escreva um comentário…', messagePerson: 'Mensagem para {{name}}…', demoReply: '🌱 Obrigado pela mensagem! (Esta é uma resposta de demonstração)' },
+  login: { welcomeBack: 'Bem-vindo de volta', title: 'Entre no seu jardim', noAccount: 'Não tem conta?', startGrowing: 'Comece a crescer →', tryDemo: 'Experimentar conta demo', demoHint: 'Clique para preencher: demo@hobbylily.com', email: 'Endereço de e-mail', password: 'Senha', submit: 'Entrar no meu jardim 🌸', orContinue: 'ou', google: 'Continuar com Google' },
+  signup: { joinGarden: 'Junte-se ao jardim', title: 'Crie sua conta', alreadyGrowing: 'Já está crescendo?', signIn: 'Entrar →', name: 'Seu nome', namePlaceholder: 'Como devemos te chamar?', email: 'Endereço de e-mail', password: 'Senha', passwordHint: 'Pelo menos 6 caracteres', submit: 'Plantar minha primeira semente 🌱', agree: 'Ao se cadastrar, você concorda em crescer honestamente e apoiar os outros.', google: 'Continuar com Google' },
 }};
 
 // ─── Korean ──────────────────────────────────────────────────────────────────
@@ -258,6 +301,8 @@ resources.ko = { translation: {
   settings: { title: '설정 ⚙️', profile: '프로필', appearance: '외관', darkMode: '다크 모드', darkModeDesc: '밝은 테마와 어두운 테마 사이를 전환', language: '언어', languageDesc: '선호하는 언어를 선택하세요', notifications: '알림', dailyReminder: '일일 알림', weeklyInsights: '주간 인사이트', communityReactions: '커뮤니티 반응', privacy: '개인정보', journalPublic: '기본적으로 일기를 공개로 표시', dangerZone: '위험 구역', resetGarden: '정원 초기화', save: '저장', name: '이름', email: '이메일', bio: '소개', bioPlaceholder: '정원에 자신을 소개하세요…' },
   common: { loading: '정원을 불러오는 중…', cancel: '취소', save: '저장', post: '게시', send: '보내기', back: '← 뒤로', tryAgain: '다시 시도', searchPlaceholder: '취미, 작업, 커뮤니티 검색…', signOut: '로그아웃', justNow: '방금', bloomStages: { seed: '씨앗', sprout: '새싹', bud: '꽃봉오리', bloom: '개화', full_bloom: '만개' } },
   community: { title: '커뮤니티 피드', subtitle: '하이라이트 없음. 진짜 진전만.', postToGarden: '정원에 게시 🌸', comments: '댓글 💬', noComments: '첫 번째로 댓글을 남기세요 🌱', writeComment: '댓글 작성…', messagePerson: '{{name}}에게 메시지…', demoReply: '🌱 메시지 감사합니다! (데모 답변입니다)' },
+  login: { welcomeBack: '다시 오신 것을 환영합니다', title: '정원에 로그인', noAccount: '계정이 없으신가요?', startGrowing: '시작하기 →', tryDemo: '데모 계정 사용해보기', demoHint: '클릭하여 입력: demo@hobbylily.com', email: '이메일 주소', password: '비밀번호', submit: '내 정원에 로그인 🌸', orContinue: '또는', google: 'Google로 계속하기' },
+  signup: { joinGarden: '정원에 참여', title: '계정 만들기', alreadyGrowing: '이미 성장 중이신가요?', signIn: '로그인 →', name: '이름', namePlaceholder: '어떻게 불러드릴까요?', email: '이메일 주소', password: '비밀번호', passwordHint: '최소 6자', submit: '첫 번째 씨앗 심기 🌱', agree: '가입하면 정직하게 성장하고 다른 사람을 지원하는 데 동의합니다.', google: 'Google로 계속하기' },
 }};
 
 // ─── Init ─────────────────────────────────────────────────────────────────────

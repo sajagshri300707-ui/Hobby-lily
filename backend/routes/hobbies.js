@@ -1,16 +1,30 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const pool = require('../db');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
-// Demo user (id: 1, demo@hobbylily.com) mock hobbies — hardcoded in-memory fallback
-const DEMO_USER_ID = 1;
-const MOCK_HOBBIES = [
-  { id: 1, user_id: DEMO_USER_ID, name: 'Guitar', emoji: '🎸', bloom_stage: 'sprout', progress: 23, days_active: 34, difficulty: 'beginner', estimated_time_per_day: '30 mins/day' },
-  { id: 2, user_id: DEMO_USER_ID, name: 'Watercolor Painting', emoji: '🎨', bloom_stage: 'bud', progress: 61, days_active: 28, difficulty: 'intermediate', estimated_time_per_day: '45 mins/day' },
-  { id: 3, user_id: DEMO_USER_ID, name: 'Photography', emoji: '📷', bloom_stage: 'seed', progress: 8, days_active: 12, difficulty: 'beginner', estimated_time_per_day: '20 mins/day' }
-];
+// File-based fallback store — survives server restarts
+const STORE_PATH = path.join(__dirname, '../data/hobbies.json');
+
+function readStore() {
+  try {
+    if (!fs.existsSync(STORE_PATH)) return [];
+    return JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
+  } catch { return []; }
+}
+
+function writeStore(hobbies) {
+  try {
+    const dir = path.dirname(STORE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFile(STORE_PATH, JSON.stringify(hobbies, null, 2), (err) => {
+      if (err) console.error('File write failed:', err);
+    });
+  } catch (e) { console.error('Store write error:', e.message); }
+}
 
 // GET /api/hobbies — get all hobbies for logged-in user
 router.get('/', authMiddleware, async (req, res) => {
@@ -21,9 +35,9 @@ router.get('/', authMiddleware, async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error('DB failed, returning mock hobbies');
-    // Return mock hobbies regardless of user_id (user is already authenticated)
-    res.json(MOCK_HOBBIES);
+    console.error('DB failed, returning file-store hobbies');
+    const store = readStore();
+    res.json(store.filter(h => h.user_id === req.user.id));
   }
 });
 
@@ -39,12 +53,16 @@ router.post('/', authMiddleware, async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('DB failed, returning mock new hobby');
+    console.error('DB failed, storing in file-store');
     const newHobby = {
       id: Date.now(), user_id: req.user.id, name, emoji: emoji || '🌸',
-      bloom_stage: 'seed', progress: 0, days_active: 0, difficulty: difficulty || 'beginner', estimated_time_per_day: estimated_time_per_day || '30 mins/day'
+      bloom_stage: 'seed', progress: 0, days_active: 0,
+      difficulty: difficulty || 'beginner',
+      estimated_time_per_day: estimated_time_per_day || '30 mins/day'
     };
-    MOCK_HOBBIES.push(newHobby);
+    const store = readStore();
+    store.push(newHobby);
+    writeStore(store);
     res.json(newHobby);
   }
 });
@@ -59,25 +77,21 @@ router.get('/:id', authMiddleware, async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Hobby not found.' });
     res.json(result.rows[0]);
   } catch (err) {
-    const h = MOCK_HOBBIES.find(h => h.id == req.params.id);
+    const store = readStore();
+    const h = store.find(h => String(h.id) === String(req.params.id) && h.user_id === req.user.id);
     if (h) res.json(h);
     else res.status(404).json({ error: 'Hobby not found.' });
   }
 });
 
-// GET /api/hobbies/:id/stats — garden stats
+// GET /api/hobbies/user/stats — garden stats
 router.get('/user/stats', authMiddleware, async (req, res) => {
   try {
-    const hobbies = await pool.query(
-      'SELECT * FROM hobbies WHERE user_id = $1', [req.user.id]
-    );
+    const hobbies = await pool.query('SELECT * FROM hobbies WHERE user_id = $1', [req.user.id]);
     const tasks = await pool.query(
-      `SELECT t.* FROM tasks t
-       JOIN hobbies h ON h.id = t.hobby_id
-       WHERE h.user_id = $1 AND t.status = 'completed'`,
-      [req.user.id]
+      `SELECT t.* FROM tasks t JOIN hobbies h ON h.id = t.hobby_id
+       WHERE h.user_id = $1 AND t.status = 'completed'`, [req.user.id]
     );
-    const totalDays = hobbies.rows.reduce((sum, h) => sum + (h.days_active || 0), 0);
     const maxStage = ['seed','sprout','bud','bloom','full_bloom'];
     let topStageIdx = 0;
     hobbies.rows.forEach(h => {
@@ -91,17 +105,13 @@ router.get('/user/stats', authMiddleware, async (req, res) => {
       bloomStage: maxStage[topStageIdx] || 'seed'
     });
   } catch (err) {
-    const maxStage = ['seed', 'sprout', 'bud', 'bloom', 'full_bloom'];
-    let topStageIdx = 0;
-    MOCK_HOBBIES.forEach(h => {
-      const idx = maxStage.indexOf(h.bloom_stage);
-      if (idx > topStageIdx) topStageIdx = idx;
-    });
+    const store = readStore();
+    const userHobbies = store.filter(h => h.user_id === req.user.id);
     res.json({
-      totalHobbies: MOCK_HOBBIES.length,
-      daysActive: Math.max(...MOCK_HOBBIES.map(h => h.days_active || 0), 0),
-      tasksCompleted: 12,
-      bloomStage: maxStage[topStageIdx] || 'seed'
+      totalHobbies: userHobbies.length,
+      daysActive: 0,
+      tasksCompleted: 0,
+      bloomStage: 'seed'
     });
   }
 });

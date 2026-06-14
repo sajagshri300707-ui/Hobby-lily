@@ -2,8 +2,11 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
+import { useBranch, getBranchKey } from '../../context/BranchContext';
 import api from '../../lib/api';
 import BloomProgress from '../../components/BloomProgress';
+import SkipCard from '../../components/SkipCard';
+import KatelynMascot from '../../components/KatelynMascot';
 
 // ─── YouTube Video Panel ────────────────────────────────────────────────────
 function YouTubePanel({ searchQuery, fallbackUrl }) {
@@ -17,7 +20,8 @@ function YouTubePanel({ searchQuery, fallbackUrl }) {
     setLoading(true);
     setError(false);
     try {
-      const res = await api.get(`/ai/youtube-search?q=${encodeURIComponent(searchQuery)}`);
+      const lang = localStorage.getItem('hl_language') || 'en';
+      const res = await api.get(`/ai/youtube-search?q=${encodeURIComponent(searchQuery)}&lang=${lang}`);
       setVideos(res.data.videos || []);
     } catch {
       setError(true);
@@ -282,13 +286,12 @@ function TaskItem({ task, index, onComplete, hobbyName, onUpvoteChallenge }) {
   };
 
   const lang = localStorage.getItem('hl_language') || 'en';
-  const langYT = { hi: 'Hindi', es: 'en español', fr: 'en français', de: 'auf Deutsch', ja: '日本語', zh: '中文', ar: 'بالعربية', pt: 'em português', ko: '한국어' };
-  const langSuffix = langYT[lang] ? ` ${langYT[lang]}` : '';
-  const ytSearchQuery = task.youtubeSearch
-    ? `${task.youtubeSearch}${langSuffix}`
-    : `${hobbyName} ${task.taskTitle} beginner tutorial${langSuffix}`;
-  const ytFallbackUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(ytSearchQuery)}`;
-  const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`how to ${task.taskTitle} ${hobbyName} beginner tips${langSuffix}`)}${lang !== 'en' ? `&hl=${lang}` : ''}`;
+  // Use the task's youtubeSearch directly — it's already in the right language
+  // since Gemini generated it in the selected language. Just use hobbyName + taskTitle
+  // as fallback if youtubeSearch is missing.
+  const ytSearchQuery = task.youtubeSearch || `${hobbyName} ${task.taskTitle} beginner tutorial`;
+  const ytFallbackUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(ytSearchQuery)}&hl=${lang}`;
+  const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`${task.taskTitle} ${hobbyName} beginner`)}&hl=${lang}`;
 
   const sortedChallenges = [...(task.commonChallenges || [])].sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
 
@@ -492,6 +495,7 @@ function ChapterAccordion({ chapter, onComplete, hobbyName, defaultExpanded, onU
 export default function PathPage() {
   const location = useLocation();
   const { showToast } = useToast();
+  const { activeBranch, startBranch, promoteBranch, abandonBranch, leaveBranch, isInBranch } = useBranch();
   const [hobbies, setHobbies] = useState([]);
   const [selectedHobbyId, setSelectedHobbyId] = useState(location.state?.hobbyId || null);
   const [pathData, setPathData] = useState(null);
@@ -499,12 +503,11 @@ export default function PathPage() {
   const [taskLoading, setTaskLoading] = useState(false);
   const [paceMessage, setPaceMessage] = useState('');
   const [bloomData, setBloomData] = useState({ probability: 0, message: '' });
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [branchInput, setBranchInput] = useState('');
+  const [branchLoading, setBranchLoading] = useState(false);
 
-  const CLIENT_MOCK_HOBBIES = [
-    { id: 1, name: 'Guitar',              emoji: '🎸', bloom_stage: 'sprout', progress: 23, days_active: 18, difficulty: 'beginner',     estimated_time_per_day: '30 mins/day' },
-    { id: 2, name: 'Watercolor Painting', emoji: '🎨', bloom_stage: 'bud',    progress: 61, days_active: 34, difficulty: 'intermediate', estimated_time_per_day: '45 mins/day' },
-    { id: 3, name: 'Photography',         emoji: '📷', bloom_stage: 'seed',   progress: 8,  days_active: 6,  difficulty: 'beginner',     estimated_time_per_day: '20 mins/day' },
-  ];
+  const CLIENT_MOCK_HOBBIES = [];
 
   useEffect(() => {
     api.get('/hobbies').then(res => {
@@ -527,19 +530,28 @@ export default function PathPage() {
   useEffect(() => {
     if (!selectedHobby) return;
     setTaskLoading(true);
+    setPathData(null); // Clear previous hobby's data immediately
 
-    const storageKey = `path_${selectedHobby.name}`;
+    const lang = localStorage.getItem('hl_language') || 'en';
+    const storageKey = lang === 'en' ? `path_${selectedHobby.name}` : `path_${selectedHobby.name}_${lang}`;
+
     const localPath = localStorage.getItem(storageKey);
     if (localPath) {
       try {
         const parsed = JSON.parse(localPath);
-        setPathData(parsed);
-        setTaskLoading(false);
-        return;
+        // If the cached path has no tasks (broken/empty), ignore it and regenerate
+        const hasTasks = parsed?.chapters?.some(c => c.tasks?.length > 0);
+        if (hasTasks) {
+          setPathData(parsed);
+          setTaskLoading(false);
+          return;
+        }
+        // Stale/broken cache — remove it and regenerate
+        localStorage.removeItem(storageKey);
       } catch(e) { console.error('Parse err', e); }
     }
 
-    if (selectedHobby.name === 'Guitar') {
+    if (selectedHobby.name.toLowerCase() === 'guitar' && lang === 'en') {
       const guitarPath = JSON.parse(JSON.stringify(MOCK_GUITAR_PATH));
       localStorage.setItem(storageKey, JSON.stringify(guitarPath));
       setPathData(guitarPath);
@@ -547,14 +559,15 @@ export default function PathPage() {
       return;
     }
 
-    // No cached path — generate chapter 1
-    generateNextChapter(selectedHobby.name, 1, []);
-  }, [selectedHobbyId, selectedHobby]);
+    // No cached path for this language — generate chapter 1
+    generateNextChapter(selectedHobby.name, 1, [], storageKey);
+  }, [selectedHobbyId]); // Only re-run when the hobby ID changes, not on every render
 
   // Generate a single chapter and append it to pathData
-  const generateNextChapter = async (hobbyName, chapterNumber, existingChapters) => {
+  async function generateNextChapter(hobbyName, chapterNumber, existingChapters, storageKey) {
     setTaskLoading(true);
     const lang = localStorage.getItem('hl_language') || 'en';
+    const key = storageKey || (lang === 'en' ? `path_${hobbyName}` : `path_${hobbyName}_${lang}`);
     const langCultureMap = {
       hi: 'Indian culture, Bollywood music, classical Indian arts',
       es: 'Latin American and Spanish culture',
@@ -586,18 +599,30 @@ export default function PathPage() {
         ...t,
         id: Date.now() + chapterNumber * 100 + j,
         taskNumber: j + 1,
-        status: chapterNumber === 1 && j === 0 ? 'current' : 'upcoming',
+        // First task of a new chapter is always current (since previous chapter is all done)
+        status: j === 0 ? 'current' : 'upcoming',
       }));
 
       setPathData(prev => {
         const updated = prev
           ? { ...prev, chapters: [...prev.chapters, newChapter] }
           : { hobbyName, chapters: [newChapter] };
-        localStorage.setItem(`path_${hobbyName}`, JSON.stringify(updated));
+        localStorage.setItem(key, JSON.stringify(updated));
+        
+        // Sync new tasks to backend
+        const selectedHobbyObj = hobbies.find(h => h.name === hobbyName);
+        if (selectedHobbyObj) {
+          api.post(`/tasks/hobby/${selectedHobbyObj.id}/sync`, { tasks: newChapter.tasks }).catch(err => {
+            console.error('Failed to sync new tasks', err);
+          });
+        }
+        
         return updated;
       });
     } catch (err) {
       console.error('Chapter generation failed:', err);
+      // Surface the error so the UI shows a retry button instead of infinite "Generating..."
+      setPathData({ hobbyName, chapters: [], _error: true });
     } finally {
       setTaskLoading(false);
     }
@@ -635,23 +660,109 @@ export default function PathPage() {
         currentChapters = next.chapters;
       }
 
-      // Save to localStorage
-      localStorage.setItem(`path_${next.hobbyName}`, JSON.stringify(next));
+      // Save to localStorage — use branch key if in a branch
+      if (isInBranch && activeBranch) {
+        localStorage.setItem(activeBranch.storageKey, JSON.stringify(next));
+      } else {
+        localStorage.setItem(`path_${next.hobbyName}`, JSON.stringify(next));
+      }
       return next;
     });
 
     if (taskId) {
-      try { await api.patch(`/tasks/${taskId}/complete`); } catch {}
+      try {
+        await api.patch(`/tasks/${taskId}/complete`);
+        showToast('Task complete! +10 points 🌟', 'points');
+      } catch (err) {
+        console.error('Sync failed', err);
+        showToast('Could not save task to cloud, but saved locally.', 'error');
+      }
+    } else {
+      showToast('Task complete! +10 points 🌟', 'points');
     }
-
-    showToast('Task complete! +10 points 🌟', 'points');
 
     // Auto-generate next chapter when last chapter is fully done
     if (allDoneInLastChapter && selectedHobby) {
-      showToast('🎉 Chapter complete! Generating your next chapter…', 'points');
-      setTimeout(() => {
-        generateNextChapter(selectedHobby.name, nextChapterNum, currentChapters);
-      }, 1000);
+      if (isInBranch && activeBranch) {
+        // Branch mode — auto-generate next branch chapter with parent context
+        showToast('🌿 Branch chapter complete! Generating next…', 'points');
+        setTimeout(() => {
+          generateNextBranchChapter();
+        }, 1000);
+      } else {
+        // Main hobby mode
+        showToast('🎉 Chapter complete! Generating your next chapter…', 'points');
+        const lang = localStorage.getItem('hl_language') || 'en';
+        const key = lang === 'en' ? `path_${selectedHobby.name}` : `path_${selectedHobby.name}_${lang}`;
+        setTimeout(() => {
+          generateNextChapter(selectedHobby.name, nextChapterNum, currentChapters, key);
+        }, 1000);
+
+        // Incremental skill extraction after each chapter completes
+        const skillsKey = `skills_${selectedHobby.name}`;
+        const existing = (() => { try { return JSON.parse(localStorage.getItem(skillsKey) || 'null'); } catch { return null; } })();
+        const existingProfile = existing?.profile || '';
+        const chaptersCompleted = nextChapterNum - 1;
+
+        api.post('/ai/extract-skills', {
+          hobbyName: selectedHobby.name,
+          completedChapters: currentChapters.slice(-1), // just the last chapter
+          existingProfile,
+        }).then(async skillRes => {
+          const newSkills = skillRes.data?.skills || [];
+          const allSkills = [...new Set([...(existing?.skills || []), ...newSkills])].slice(0, 12);
+
+          // Condense every 5 chapters to keep profile compact
+          const shouldCondense = !existing || (chaptersCompleted - (existing.lastCondensed || 0)) >= 5;
+          let profile = existingProfile;
+
+          if (shouldCondense && allSkills.length > 0) {
+            try {
+              const condenseRes = await api.post('/ai/condense-skills', {
+                hobbyName: selectedHobby.name,
+                skills: allSkills,
+                chaptersCompleted,
+              });
+              profile = condenseRes.data?.profile || allSkills.join(', ');
+            } catch {
+              profile = allSkills.join(', ');
+            }
+          }
+
+          localStorage.setItem(skillsKey, JSON.stringify({
+            skills: allSkills,
+            profile,
+            chaptersCompleted,
+            lastCondensed: shouldCondense ? chaptersCompleted : (existing?.lastCondensed || 0),
+          }));
+        }).catch(() => {});
+      }
+    }
+
+    // Extract transferable skills when hobby reaches full bloom (750 tasks = 50 chapters)
+    if (selectedHobby) {
+      const skillsKey = `skills_${selectedHobby.name}`;
+      const alreadyExtracted = localStorage.getItem(skillsKey);
+      if (!alreadyExtracted) {
+        // Check if completed tasks >= 750
+        setPathData(prev => {
+          if (!prev) return prev;
+          const allDone = prev.chapters.flatMap(c => c.tasks).filter(t => t.status === 'completed').length;
+          if (allDone >= 750) {
+            // Fire and forget — extract skills in background
+            api.post('/ai/extract-skills', {
+              hobbyName: selectedHobby.name,
+              completedChapters: prev.chapters,
+            }).then(res => {
+              if (res.data?.skills?.length > 0) {
+                localStorage.setItem(skillsKey, JSON.stringify(res.data.skills));
+                showToast(`🧠 Skills extracted from ${selectedHobby.name} — they'll give you a head start on related hobbies!`, 'points');
+              }
+            }).catch(() => {});
+          }
+          return prev;
+        });
+      }
     }
   };
 
@@ -678,6 +789,194 @@ export default function PathPage() {
         })),
       };
     });
+  };
+
+  const handleStartBranch = async () => {
+    if (!branchInput.trim() || !selectedHobby) return;
+    setBranchLoading(true);
+    try {
+      const lang = localStorage.getItem('hl_language') || 'en';
+      const langCultureMap = {
+        hi: 'Indian culture, Bollywood music, classical Indian arts',
+        es: 'Latin American and Spanish culture',
+        fr: 'French culture and arts',
+        de: 'German culture',
+        ja: 'Japanese culture, J-pop, anime',
+        zh: 'Chinese culture, C-pop, traditional Chinese arts',
+        ar: 'Arabic culture, Middle Eastern music and arts',
+        pt: 'Brazilian and Portuguese culture',
+        ko: 'Korean culture, K-pop, K-drama',
+      };
+      const culturalContext = langCultureMap[lang] || '';
+      const branchName = branchInput.trim();
+      const branch = startBranch(selectedHobby.name, branchName, pathData);
+
+      // Generate chapter 1 of the branch with parent context
+      const parentContext = pathData?.chapters?.slice(-3).map(c =>
+        `Ch${c.chapterNumber}: "${c.chapterTitle}"`
+      ).join(', ') || '';
+
+      const res = await api.post('/ai/generate-chapter', {
+        hobbyName: `${selectedHobby.name} — ${branchName}`,
+        chapterNumber: 1,
+        completedChapters: [],
+        language: lang,
+        culturalContext,
+        priorContext: `This is a focused branch of ${selectedHobby.name} (Niche: ${branchName}). The learner is at chapter ${pathData?.chapters?.length || 0} of the main branch, so their level context is equivalent to chapter ${(pathData?.chapters?.length || 0) + 1}. The learner has completed these parent hobby chapters (main branch inheritance): ${parentContext}. Focus specifically on the niche: ${branchName}. Do not teach basics they already know.`,
+        inheritedSkills: (() => {
+          try {
+            const raw = JSON.parse(localStorage.getItem(`skills_${selectedHobby.name}`) || 'null');
+            return raw ? { [selectedHobby.name]: raw } : {};
+          } catch { return {}; }
+        })(),
+      });
+
+      if (res.data?.tasks) {
+        res.data.tasks = res.data.tasks.map((t, j) => ({
+          ...t,
+          id: Date.now() + j,
+          taskNumber: j + 1,
+          status: j === 0 ? 'current' : 'upcoming',
+        }));
+        const branchPath = {
+          hobbyName: branchName,
+          parentHobby: selectedHobby.name,
+          parentChapterAtBranch: pathData?.chapters?.length || 0,
+          chapters: [res.data],
+          status: 'active',
+        };
+        localStorage.setItem(branch.storageKey, JSON.stringify(branchPath));
+        // Switch path view to branch
+        setPathData(branchPath);
+      }
+
+      setShowBranchModal(false);
+      setBranchInput('');
+      showToast(`🌿 Branch started: ${branchName}`, 'points');
+    } catch (err) {
+      console.error('Branch generation failed:', err);
+      showToast('Failed to start branch. Try again.', 'error');
+    } finally {
+      setBranchLoading(false);
+    }
+  };
+
+  // Generate next chapter for a branch — with parent hobby context + branch niche
+  async function generateNextBranchChapter() {
+    if (!activeBranch || !pathData) return;
+    setTaskLoading(true);
+    try {
+      const lang = localStorage.getItem('hl_language') || 'en';
+      const langCultureMap = {
+        hi: 'Indian culture, Bollywood music, classical Indian arts',
+        es: 'Latin American and Spanish culture',
+        fr: 'French culture and arts',
+        de: 'German culture',
+        ja: 'Japanese culture, J-pop, anime',
+        zh: 'Chinese culture, C-pop, traditional Chinese arts',
+        ar: 'Arabic culture, Middle Eastern music and arts',
+        pt: 'Brazilian and Portuguese culture',
+        ko: 'Korean culture, K-pop, K-drama',
+      };
+      const culturalContext = langCultureMap[lang] || '';
+
+      // Get parent hobby path for context
+      const parentKey = lang === 'en'
+        ? `path_${activeBranch.parentHobby}`
+        : `path_${activeBranch.parentHobby}_${lang}`;
+      const parentPath = (() => {
+        try { return JSON.parse(localStorage.getItem(parentKey) || 'null'); } catch { return null; }
+      })();
+
+      // Build parent context summary (last 5 chapters)
+      const parentContext = parentPath?.chapters
+        ?.slice(-5)
+        .map(c => `Ch${c.chapterNumber}: "${c.chapterTitle}" — ${(c.tasks || []).map(t => t.taskTitle).join(', ')}`)
+        .join('\n') || '';
+
+      // Get inherited skills from the parent hobby
+      const skillsKey = `skills_${activeBranch.parentHobby}`;
+      const inheritedRaw = (() => {
+        try { return JSON.parse(localStorage.getItem(skillsKey) || 'null'); } catch { return null; }
+      })();
+      const inheritedSkills = inheritedRaw
+        ? { [activeBranch.parentHobby]: inheritedRaw }
+        : {};
+
+      // Branch's own completed chapters for continuity
+      const branchChapters = pathData.chapters || [];
+      const nextChapterNum = branchChapters.length + 1;
+
+      const effectiveChapterNum = (activeBranch.parentChapterAtBranch || 0) + nextChapterNum;
+
+      const res = await api.post('/ai/generate-chapter', {
+        hobbyName: `${activeBranch.parentHobby} — ${activeBranch.branchName}`,
+        chapterNumber: nextChapterNum,
+        completedChapters: branchChapters.map(c => ({
+          chapterNumber: c.chapterNumber,
+          chapterTitle: c.chapterTitle,
+          tasks: (c.tasks || []).map(t => ({ taskTitle: t.taskTitle })),
+        })),
+        language: lang,
+        culturalContext,
+        priorContext: `This is branch chapter ${nextChapterNum} of a focused branch (Niche: "${activeBranch.branchName}") within the hobby "${activeBranch.parentHobby}". The learner has completed ${activeBranch.parentChapterAtBranch || 0} chapters in the main branch, so their level context is equivalent to chapter ${effectiveChapterNum}. They have also completed these parent hobby chapters (main branch inheritance):\n${parentContext}\n\nFocus SPECIFICALLY on the branch niche: ${activeBranch.branchName}. Build on their main branch inheritance, knowledge inheritance, and level context, diving deep into this specialisation. Do NOT repeat parent hobby basics.`,
+        inheritedSkills,
+      });
+
+      const newChapter = res.data;
+      if (!newChapter || !newChapter.tasks) {
+        showToast('Failed to generate chapter. Try again.', 'error');
+        return;
+      }
+
+      newChapter.tasks = newChapter.tasks.map((t, j) => ({
+        ...t,
+        id: Date.now() + nextChapterNum * 100 + j,
+        taskNumber: j + 1,
+        status: j === 0 ? 'current' : 'upcoming',
+      }));
+
+      setPathData(prev => {
+        const updated = prev
+          ? { ...prev, chapters: [...prev.chapters, newChapter] }
+          : { ...pathData, chapters: [newChapter] };
+        localStorage.setItem(activeBranch.storageKey, JSON.stringify(updated));
+        return updated;
+      });
+
+      showToast(`🌿 Branch chapter ${nextChapterNum} generated!`, 'points');
+    } catch (err) {
+      console.error('Branch chapter generation failed:', err);
+      showToast('Failed to generate branch chapter. Try again.', 'error');
+    } finally {
+      setTaskLoading(false);
+    }
+  }
+
+  const handlePromoteBranch = () => {
+    if (!activeBranch) return;
+    // The branch path is already in localStorage under branch.storageKey
+    // Copy it to a regular path key so it shows as a full hobby
+    const branchPath = JSON.parse(localStorage.getItem(activeBranch.storageKey) || 'null');
+    if (branchPath) {
+      localStorage.setItem(`path_${activeBranch.branchName}`, JSON.stringify({
+        ...branchPath,
+        status: 'promoted',
+      }));
+    }
+    promoteBranch();
+    showToast(`🌸 "${activeBranch.branchName}" is now a full hobby path!`, 'points');
+  };
+
+  const handleAbandonBranch = () => {
+    if (!activeBranch) return;
+    abandonBranch();
+    // Reload parent path
+    const lang = localStorage.getItem('hl_language') || 'en';
+    const key = lang === 'en' ? `path_${selectedHobby?.name}` : `path_${selectedHobby?.name}_${lang}`;
+    const parentPath = JSON.parse(localStorage.getItem(key) || 'null');
+    if (parentPath) setPathData(parentPath);
+    showToast('Branch merged into your main path ✓');
   };
 
   const allTasks = pathData?.chapters.flatMap(c => c.tasks) || [];
@@ -753,12 +1052,43 @@ export default function PathPage() {
               [1,2,3].map(i => <div key={i} className="skeleton" style={{ height: '120px', marginBottom: '1.5rem' }} />)
             ) : !pathData || total === 0 ? (
               <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--ink-muted)', fontFamily: 'var(--font-body)' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌱</div>
-                <p style={{ marginBottom: '0.5rem', fontWeight: 600, color: 'var(--ink)' }}>Generating your learning path…</p>
-                <p style={{ fontSize: '0.85rem' }}>AI is building a personalised path for this hobby. This takes about 10 seconds.</p>
+                {pathData?._error ? (
+                  <>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+                    <p style={{ marginBottom: '0.5rem', fontWeight: 600, color: 'var(--ink)' }}>Couldn't generate your path</p>
+                    <p style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>The AI might be busy. Click retry to try again.</p>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => {
+                        const lang = localStorage.getItem('hl_language') || 'en';
+                        const key = lang === 'en' ? `path_${selectedHobby.name}` : `path_${selectedHobby.name}_${lang}`;
+                        localStorage.removeItem(key);
+                        setPathData(null);
+                        generateNextChapter(selectedHobby.name, 1, [], key);
+                      }}
+                    >
+                      Retry
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌱</div>
+                    <p style={{ marginBottom: '0.5rem', fontWeight: 600, color: 'var(--ink)' }}>Generating your learning path…</p>
+                    <p style={{ fontSize: '0.85rem' }}>AI is building a personalised path for this hobby. This takes about 10 seconds.</p>
+                  </>
+                )}
               </div>
             ) : (
               <div>
+                {/* Skip card — shown when chapters were skipped due to knowledge inheritance */}
+                {pathData.skipData && (
+                  <SkipCard
+                    skippedChapters={pathData.skipData.skippedChapters}
+                    startChapter={pathData.startedAtChapter || pathData.skipData.startChapter}
+                    reason={pathData.skipData.reason}
+                    skillsUsed={pathData.skipData.skillsUsed}
+                  />
+                )}
                 {pathData.chapters.map((chap, i) => (
                   <ChapterAccordion 
                     key={i} 
@@ -821,7 +1151,7 @@ export default function PathPage() {
             {selectedHobby && (
               <div className="card" style={{ padding: '1.25rem' }}>
                 <p style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--ink)', fontFamily: 'var(--font-body)', marginBottom: '0.75rem' }}>
-                  {selectedHobby.name} Overall Progress
+                  {isInBranch ? `🌿 ${activeBranch?.branchName}` : `${selectedHobby.name} Overall Progress`}
                 </p>
                 {/* Full bloom progress — bouquet/tree/grandmaster system */}
                 <BloomProgress
@@ -835,33 +1165,154 @@ export default function PathPage() {
                     {completed} tasks · {pathData?.chapters?.length || 0} chapters
                   </span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--ink-muted)', fontFamily: 'var(--font-body)' }}>
-                    cap: 750
+                    {isInBranch ? 'branch' : 'cap: 750'}
                   </span>
                 </div>
-                {/* Pre-generate next chapter button */}
-                {!taskLoading && pathData?.chapters && (
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    style={{ width: '100%', marginTop: '10px', justifyContent: 'center', fontSize: '0.78rem' }}
-                    onClick={() => generateNextChapter(
-                      selectedHobby.name,
-                      (pathData.chapters.length || 0) + 1,
-                      pathData.chapters
+
+                {/* Branch action buttons */}
+                {isInBranch ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                    {/* Generate next branch chapter */}
+                    {!taskLoading && pathData?.chapters && (
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ width: '100%', justifyContent: 'center', fontSize: '0.78rem', background: 'linear-gradient(135deg, #2D6A4F, #40916C)', borderColor: '#2D6A4F' }}
+                        onClick={generateNextBranchChapter}
+                      >
+                        🌿 Generate next chapter
+                      </button>
                     )}
-                  >
-                    + Generate next chapter
-                  </button>
-                )}
-                {taskLoading && (
-                  <p style={{ fontSize: '0.75rem', color: 'var(--brown-light)', fontFamily: 'var(--font-body)', marginTop: '8px', textAlign: 'center' }}>
-                    ✨ Generating chapter {(pathData?.chapters?.length || 0) + 1}…
-                  </p>
+                    {taskLoading && (
+                      <p style={{ fontSize: '0.75rem', color: '#2D6A4F', fontFamily: 'var(--font-body)', textAlign: 'center', padding: '6px 0' }}>
+                        ✨ Generating branch chapter {(pathData?.chapters?.length || 0) + 1}…
+                      </p>
+                    )}
+                    <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', fontSize: '0.78rem' }} onClick={handlePromoteBranch}>
+                      🌸 Promote to full hobby
+                    </button>
+                    <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', fontSize: '0.78rem' }} onClick={handleAbandonBranch}>
+                      ↩ Merge back & continue
+                    </button>
+                    <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', fontSize: '0.78rem', opacity: 0.7 }} onClick={leaveBranch}>
+                      × Just leave branch
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Generate next chapter */}
+                    {!taskLoading && pathData?.chapters && (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ width: '100%', marginTop: '10px', justifyContent: 'center', fontSize: '0.78rem' }}
+                        onClick={() => {
+                          const lang = localStorage.getItem('hl_language') || 'en';
+                          const key = lang === 'en' ? `path_${selectedHobby.name}` : `path_${selectedHobby.name}_${lang}`;
+                          generateNextChapter(selectedHobby.name, (pathData.chapters.length || 0) + 1, pathData.chapters, key);
+                        }}
+                      >
+                        + Generate next chapter
+                      </button>
+                    )}
+                    {taskLoading && (
+                      <p style={{ fontSize: '0.75rem', color: 'var(--brown-light)', fontFamily: 'var(--font-body)', marginTop: '8px', textAlign: 'center' }}>
+                        ✨ Generating chapter {(pathData?.chapters?.length || 0) + 1}…
+                      </p>
+                    )}
+                    {/* Start branch button */}
+                    {!taskLoading && pathData?.chapters?.length > 0 && (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ width: '100%', marginTop: '6px', justifyContent: 'center', fontSize: '0.78rem', borderColor: 'var(--blue-soft)', color: 'var(--blue-soft)' }}
+                        onClick={() => setShowBranchModal(true)}
+                      >
+                        🌿 Start a Branch
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Branch Modal */}
+      <AnimatePresence>
+        {showBranchModal && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={e => e.target === e.currentTarget && setShowBranchModal(false)}
+          >
+            <motion.div
+              className="modal-box"
+              style={{ padding: '2rem', maxWidth: '460px' }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+            >
+              {/* Katelyn centered at top */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <KatelynMascot size={90} autoPlay={!branchLoading} />
+              </div>
+
+              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', color: 'var(--ink)', marginBottom: '0.5rem', textAlign: 'center' }}>
+                🌿 Start a Branch
+              </h2>
+              <p style={{ color: 'var(--ink-muted)', fontSize: '0.88rem', fontFamily: 'var(--font-body)', marginBottom: '1.5rem', textAlign: 'center', lineHeight: 1.5 }}>
+                Explore a niche within <strong>{selectedHobby?.name}</strong>. You can promote it to a full hobby or merge it back later.
+              </p>
+
+              <input
+                className="form-input"
+                placeholder={`e.g. Electric riffs, Power chords, Fingerpicking…`}
+                value={branchInput}
+                onChange={e => setBranchInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !branchLoading && branchInput.trim() && handleStartBranch()}
+                style={{ marginBottom: '1rem', fontSize: '1rem' }}
+                autoFocus
+              />
+
+              {/* Examples */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '1.25rem' }}>
+                {[
+                  selectedHobby?.name === 'Guitar' ? 'Electric riffs' : null,
+                  selectedHobby?.name === 'Guitar' ? 'Fingerpicking' : null,
+                  selectedHobby?.name === 'Watercolor Painting' ? 'Wet-on-wet' : null,
+                  selectedHobby?.name === 'Photography' ? 'Portrait lighting' : null,
+                  'Advanced techniques',
+                  'A specific style',
+                ].filter(Boolean).slice(0, 4).map(ex => (
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => setBranchInput(ex)}
+                    style={{ padding: '4px 12px', borderRadius: '99px', fontSize: '0.75rem', border: '1px solid var(--blue-soft)', background: 'var(--blue-pale)', color: 'var(--brown-coffee)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                  disabled={branchLoading || !branchInput.trim()}
+                  onClick={handleStartBranch}
+                >
+                  {branchLoading ? '🌿 Generating branch…' : '🌿 Start Branch'}
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setShowBranchModal(false); setBranchInput(''); }}>
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,0 +1,79 @@
+[
+  {
+    "id": 1780192317345,
+    "user_id": 1,
+    "name": "guitar",
+    "emoji": "🌱",
+    "bloom_stage": "seed",
+    "progress": 0,
+    "days_active": 0,
+    "difficulty": "beginner",
+    "estimated_time_per_day": "30 mins/day"
+  },
+  {
+    "id": 1780229210025,
+    "user_id": 1,
+    "name": "Painting",
+    "emoji": "??",
+    "bloom_stage": "seed",
+    "progress": 0,
+    "days_active": 0,
+    "difficulty": "beginner",
+    "estimated_time_per_day": "30 mins/day"
+  },
+  {
+    "id": 1780229792890,
+    "user_id": 1,
+    "name": "Chess",
+    "emoji": "??",
+    "bloom_stage": "seed",
+    "progress": 0,
+    "days_active": 0,
+    "difficulty": "beginner",
+    "estimated_time_per_day": "30 mins/day"
+  },
+  {
+    "id": 1780260892851,
+    "user_id": 1,
+    "name": "Cloud Gazing and Identification",
+    "emoji": "☁️",
+    "bloom_stage": "seed",
+    "progress": 0,
+    "days_active": 0,
+    "difficulty": "beginner",
+    "estimated_time_per_day": "10 mins/day"
+  },
+  {
+    "id": 1780261921041,
+    "user_id": 1,
+    "name": "graphic designing",
+    "emoji": "🌱",
+    "bloom_stage": "seed",
+    "progress": 0,
+    "days_active": 0,
+    "difficulty": "beginner",
+    "estimated_time_per_day": "30 mins/day"
+  },
+  {
+    "id": 1781438113446,
+    "user_id": 1781438042077,
+    "name": "guitar",
+    "emoji": "🌱",
+    "bloom_stage": "seed",
+    "progress": 0,
+    "days_active": 0,
+    "difficulty": "beginner",
+    "estimated_time_per_day": "30 mins/day"
+  },
+  {
+    "id": 1781440270878,
+    "user_id": 1781438042077,
+    "name": "pottery",
+    "emoji": "🌱",
+    "bloom_stage": "seed",
+    "progress": 0,
+    "days_active": 0,
+    "difficulty": "beginner",
+    "estimated_time_per_day": "30 mins/day"
+  }
+]

@@ -3,11 +3,34 @@
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE,
+  phone VARCHAR(50) UNIQUE,
+  password VARCHAR(255),
+  google_id VARCHAR(255) UNIQUE,
   avatar_color VARCHAR(50) DEFAULT '#A8C4D4',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Indexes for performance at scale
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+
+-- Auto-update updated_at on row changes
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+DROP TRIGGER IF EXISTS update_users_modtime ON users;
+CREATE TRIGGER update_users_modtime
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_modified_column();
 
 CREATE TABLE IF NOT EXISTS hobbies (
   id SERIAL PRIMARY KEY,
@@ -23,7 +46,7 @@ CREATE TABLE IF NOT EXISTS hobbies (
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
-  id SERIAL PRIMARY KEY,
+  id BIGSERIAL PRIMARY KEY,
   hobby_id INTEGER REFERENCES hobbies(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
